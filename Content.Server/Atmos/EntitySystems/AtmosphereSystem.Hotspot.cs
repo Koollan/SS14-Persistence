@@ -84,28 +84,13 @@ public sealed partial class AtmosphereSystem
         if (tile.ExcitedGroup != null)
             ExcitedGroupResetCooldowns(tile.ExcitedGroup);
 
-        var oxygen = tile.Air?.GetMoles(Gas.Oxygen) ?? 0f;
-        var plasma = tile.Air?.GetMoles(Gas.Plasma) ?? 0f;
-        var tritium = tile.Air?.GetMoles(Gas.Tritium) ?? 0f;
-        var methane = tile.Air?.GetMoles(Gas.Methane) ?? 0f;
-        var hydrogen = tile.Air?.GetMoles(Gas.Hydrogen) ?? 0f;
-        var clf3 = tile.Air?.GetMoles(Gas.ChlorineTrifluoride) ?? 0f;
-
-        // Allow ClF3 fires to persist without oxygen; require at least one fuel present.
-        var hasFuel = plasma > 0.5f || tritium > 0.5f || methane > 0.5f || hydrogen > 0.5f || clf3 > 0.5f;
-
         if (tile.Hotspot.Temperature < Atmospherics.FireMinimumTemperatureToExist ||
             tile.Hotspot.Volume <= 1f ||
             tile.Air == null ||
-            (!hasFuel) ||
-            (oxygen < 0.5f && clf3 < 0.5f))
+            tile.Air.GetMoles(Gas.Oxygen) < 0.5f ||
+            tile.Air.GetMoles(Gas.Plasma) < 0.5f && tile.Air.GetMoles(Gas.Tritium) < 0.5f)
         {
-            // Extinguish hotspot and clear any residual fire reaction results on the tile's air
             tile.Hotspot = new Hotspot();
-            if (tile.Air != null)
-            {
-                tile.Air.ReactionResults[(byte)GasReaction.Fire] = 0f;
-            }
             InvalidateVisuals(ent, tile);
             return;
         }
@@ -162,11 +147,6 @@ public sealed partial class AtmosphereSystem
                         HotspotExpose(gridAtmosphere, otherTile, radiatedTemperature, Atmospherics.CellVolume / 4);
                 }
             }
-            // Clear the tile's stored reaction result after using it to size the hotspot
-            if (tile.Air != null)
-            {
-                tile.Air.ReactionResults[(byte)GasReaction.Fire] = 0f;
-            }
         }
         else
         {
@@ -211,23 +191,19 @@ public sealed partial class AtmosphereSystem
     /// This clamps the temperature and volume of the hotspot to the maximum
     /// of the provided parameters and whatever's on the tile.</param>
     /// <param name="sparkSourceUid">Entity that started the exposure for admin logging.</param>
-    /// <param name="fuelGas">The gas fuel type for fire color. If null, determined automatically.</param>
     private void HotspotExpose(GridAtmosphereComponent gridAtmosphere,
         TileAtmosphere tile,
         float exposedTemperature,
         float exposedVolume,
         bool soh = false,
-        EntityUid? sparkSourceUid = null,
-        Gas? fuelGas = null)
+        EntityUid? sparkSourceUid = null)
     {
         if (tile.Air == null)
             return;
 
         var oxygen = tile.Air.GetMoles(Gas.Oxygen);
-        var clf3 = tile.Air.GetMoles(Gas.ChlorineTrifluoride);
 
-        // ClF3 is hypergolic and ignites without oxygen, but most other gases need oxygen
-        if (oxygen < 0.5f && clf3 < 0.5f)
+        if (oxygen < 0.5f)
             return;
 
         var plasma = tile.Air.GetMoles(Gas.Plasma);
@@ -237,7 +213,7 @@ public sealed partial class AtmosphereSystem
         {
             if (soh)
             {
-                if (plasma > 0.5f || tritium > 0.5f || clf3 > 0.5f)
+                if (plasma > 0.5f || tritium > 0.5f)
                 {
                     tile.Hotspot.Temperature = MathF.Max(tile.Hotspot.Temperature, exposedTemperature);
                     tile.Hotspot.Volume = MathF.Max(tile.Hotspot.Volume, exposedVolume);
@@ -247,11 +223,7 @@ public sealed partial class AtmosphereSystem
             return;
         }
 
-        if (exposedTemperature > Atmospherics.PlasmaMinimumBurnTemperature &&
-            (plasma > 0.5f || tritium > 0.5f ||
-             tile.Air.GetMoles(Gas.Methane) > 0.5f ||
-             tile.Air.GetMoles(Gas.Hydrogen) > 0.5f ||
-             clf3 > 0.5f)) // ClF3 ignites at high temperature regardless of oxygen
+        if (exposedTemperature > Atmospherics.PlasmaMinimumBurnTemperature && (plasma > 0.5f || tritium > 0.5f))
         {
             if (sparkSourceUid.HasValue)
             {
@@ -260,32 +232,13 @@ public sealed partial class AtmosphereSystem
                     $"Heat/spark of {ToPrettyString(sparkSourceUid.Value)} caused atmos ignition of gas: {tile.Air.Temperature.ToString():temperature}K - {oxygen}mol Oxygen, {plasma}mol Plasma, {tritium}mol Tritium");
             }
 
-            // Determine primary fuel gas if not provided
-            var primaryFuel = fuelGas ?? Gas.Plasma; // Default to plasma
-            if (!fuelGas.HasValue)
-            {
-                // Auto-detect based on most abundant fuel gas
-                var methane = tile.Air.GetMoles(Gas.Methane);
-                var hydrogen = tile.Air.GetMoles(Gas.Hydrogen);
-
-                if (clf3 > plasma && clf3 > tritium && clf3 > methane && clf3 > hydrogen)
-                    primaryFuel = Gas.ChlorineTrifluoride;
-                if (methane > plasma && methane > tritium && methane > hydrogen)
-                    primaryFuel = Gas.Methane;
-                else if (hydrogen > plasma && hydrogen > tritium && hydrogen > methane)
-                    primaryFuel = Gas.Hydrogen;
-                else if (tritium > plasma)
-                    primaryFuel = Gas.Tritium;
-            }
-
             tile.Hotspot = new Hotspot
             {
                 Volume = exposedVolume * 25f,
                 Temperature = exposedTemperature,
                 SkippedFirstProcess = tile.CurrentCycle > gridAtmosphere.UpdateCounter,
                 Valid = true,
-                State = 1,
-                PrimaryFuel = primaryFuel
+                State = 1
             };
 
             AddActiveTile(gridAtmosphere, tile);
@@ -322,12 +275,6 @@ public sealed partial class AtmosphereSystem
             // Scale the fire based on the type of reaction that occured.
             tile.Hotspot.Volume = affected.ReactionResults[(byte)GasReaction.Fire] * Atmospherics.FireGrowthRate;
             Merge(tile.Air, affected);
-
-            // Clear any residual fire reaction result stored on the tile's air to avoid persisting heat.
-            if (tile.Air != null)
-            {
-                tile.Air.ReactionResults[(byte)GasReaction.Fire] = 0f;
-            }
         }
 
         var fireEvent = new TileFireEvent(tile.Hotspot.Temperature, tile.Hotspot.Volume);

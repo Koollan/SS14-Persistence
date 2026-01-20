@@ -72,9 +72,6 @@
         CarbonDioxide:
           moles: 100
           prob: 0.5
-        Methane:
-          moles: 80
-          prob: 0.2
 
 
 - type: entity
@@ -183,14 +180,11 @@
         temperature: 60 # Yall come up with temperature that makes sense
         moles: # Maximum Moles per TILE, factors such as seed upper/lower bound also apply.
           CarbonDioxide: 194
-          Hydrogen: 90
+          Nitrogen: 90
       variableMixture:
         Oxygen:
           moles: 80
           prob: 0.1
-        Methane:
-          moles: 60
-          prob: 0.2
         Plasma:
           moles: 60
           prob: 0.5
@@ -327,13 +321,10 @@
         temperature: 60 # Yall come up with temperature that makes sense
         moles: # Maximum Moles per TILE, factors such as seed upper/lower bound also apply.
           CarbonDioxide: 194
-          Hydrogen: 120
+          Nitrogen: 120
       variableMixture:
         Oxygen:
           moles: 100
-          prob: 0.5
-        Methane:
-          moles: 80
           prob: 0.5
         Plasma:
           moles: 80
@@ -529,15 +520,6 @@
         Plasma:
           moles: 100
           prob: 0.3
-        Chlorine:
-          moles: 40
-          prob: 0.2
-        Fluorine:
-          moles: 30
-          prob: 0.2
-        ChlorineTrifluoride:
-          moles: 20
-          prob: 0.05
 
 - type: entity
   id: BaseChromiteDebrisBarren
@@ -597,15 +579,6 @@
         Plasma:
           moles: 100
           prob: 0.1
-        Chlorine:
-          moles: 40
-          prob: 0.2
-        Fluorine:
-          moles: 30
-          prob: 0.2
-        ChlorineTrifluoride:
-          moles: 20
-          prob: 0.05
 
 - type: entity
   id: BaseChromiteDebrisRich
@@ -665,15 +638,6 @@
         Tritium:
           moles: 20
           prob: 0.3
-        Chlorine:
-          moles: 40
-          prob: 0.2
-        Fluorine:
-          moles: 30
-          prob: 0.2
-        ChlorineTrifluoride:
-          moles: 20
-          prob: 0.05
 
 
 - type: entity
@@ -885,9 +849,6 @@
         Ammonia:
           moles: 130
           prob: 0.5
-        Methane:
-          moles: 80
-          prob: 0.2
 
 - type: entity
   id: BaseBasaltDebrisBarren
@@ -957,9 +918,6 @@
         Ammonia:
           moles: 100
           prob: 0.5
-        Methane:
-          moles: 60
-          prob: 0.2
 
 - type: entity
   id: BaseBasaltDebrisRich
@@ -1026,9 +984,6 @@
         Ammonia:
           moles: 90
           prob: 0.5
-        Methane:
-          moles: 100
-          prob: 0.2
 
 - type: entity
   id: BasaltDebrisSmall
@@ -1238,9 +1193,6 @@
         Oxygen:
           moles: 110
           prob: 0.3
-        Methane:
-          moles: 80
-          prob: 0.2
 
 - type: entity
   id: BaseAndesiteDebrisBarren
@@ -1309,9 +1261,6 @@
         Oxygen:
           moles: 110
           prob: 0.1
-        Methane:
-          moles: 40
-          prob: 0.2
 
 - type: entity
   id: BaseAndesiteDebrisRich
@@ -1377,9 +1326,6 @@
         Oxygen:
           moles: 180
           prob: 0.5
-        Methane:
-          moles: 100
-          prob: 0.2
 
 - type: entity
   id: AndesiteDebrisSmall
@@ -1563,7 +1509,6 @@
         temperature: 30 # Yall come up with temperature that makes sense
         moles: # Maximum Moles per TILE, factors such as seed upper/lower bound also apply.
           Oxygen: 90
-          Hydrogen: 50
           WaterVapor: 256
       variableMixture:
         Frezon:
@@ -1575,9 +1520,6 @@
         Oxygen:
           moles: 130
           prob: 0.3
-        Hydrogen:
-          moles: 70
-          prob: 0.5
 
 - type: entity
   id: BaseIceDebrisBarren
@@ -1628,9 +1570,6 @@
         Oxygen:
           moles: 90
           prob: 0.1
-        Hydrogen:
-          moles: 70
-          prob: 0.5
 
 - type: entity
   id: BaseIceDebrisRich
@@ -1685,9 +1624,6 @@
         Tritium:
           moles: 10
           prob: 0.3
-        Hydrogen:
-          moles: 90
-          prob: 0.5
 
 - type: entity
   id: IceDebrisSmall
@@ -1903,12 +1839,6 @@
         Nitrogen:
           moles: 120
           prob: 0.1
-        Chlorine:
-          moles: 50
-          prob: 0.05
-        Fluorine:
-          moles: 30
-          prob: 0.05
 
 
 - type: entity
@@ -1978,12 +1908,6 @@
         Nitrogen:
           moles: 180
           prob: 0.1
-        Chlorine:
-          moles: 40
-          prob: 0.05
-        Fluorine:
-          moles: 20
-          prob: 0.05
 
 - type: entity
   id: BaseConglomerateDebrisRich
@@ -2057,12 +1981,6 @@
         Nitrogen:
           moles: 180
           prob: 0.4
-        Chlorine:
-          moles: 60
-          prob: 0.1
-        Fluorine:
-          moles: 40
-          prob: 0.1
 
 - type: entity
   id: ConglomerateDebrisSmall

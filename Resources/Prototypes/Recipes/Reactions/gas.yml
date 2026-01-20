@@ -21,27 +21,3 @@
   products:
     Nitrogen: 2
     Oxygen: 1
-
-- type: reaction
-  id: MethaneElectrolysis
-  source: true
-  requiredMixerCategories:
-  - Electrolysis
-  reactants:
-    Methane:
-      amount: 1
-  products:
-    Carbon: 1
-    Hydrogen: 4
-
-- type: reaction
-  id: ClF3Electrolysis
-  source: true
-  requiredMixerCategories:
-  - Electrolysis
-  reactants:
-    ChlorineTrifluoride:
-      amount: 1
-  products:
-    Chlorine: 1
-    Fluorine: 3

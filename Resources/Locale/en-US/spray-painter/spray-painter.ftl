@@ -197,12 +197,6 @@ spray-painter-style-canisters-plasma = Plasma
 spray-painter-style-canisters-storage = Storage
 spray-painter-style-canisters-tritium = Tritium
 spray-painter-style-canisters-water-vapor = Water vapor
-spray-painter-style-canisters-hydrogen = Hydrogen
-spray-painter-style-canisters-chlorine = Chlorine
-spray-painter-style-canisters-fluorine = Fluorine
-spray-painter-style-canisters-methane = Methane
-spray-painter-style-canisters-chlorine-trifluoride = ClF3
-
 
 # Items - Containers
 spray-painter-style-itemcontainers-blank = Blank

@@ -120,20 +120,6 @@
         multiplier: 0.2
       - !type:AdjustTemperature
         amount: 6000
-    Gas:
-      effects:
-      - !type:HealthChange
-        damage:
-          types:
-            Asphyxiation: 0.5
-            Poison: 3
-            Heat: 2
-            Caustic: 1.5
-      - !type:AdjustAlert
-        alertType: Toxins
-        minScale: 1.5
-        clear: True
-        time: 5
   reactiveEffects:
     Flammable:
       methods: [ Touch ]

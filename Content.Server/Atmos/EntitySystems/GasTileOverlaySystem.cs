@@ -218,12 +218,12 @@ namespace Content.Server.Atmos.EntitySystems
             if (oldData.Equals(default))
             {
                 changed = true;
-                oldData = new GasOverlayData(tile.Hotspot.State, new byte[VisibleGasId.Length], tile.Hotspot.PrimaryFuel);
+                oldData = new GasOverlayData(tile.Hotspot.State, new byte[VisibleGasId.Length]);
             }
-            else if (oldData.FireState != tile.Hotspot.State || oldData.FireGas != tile.Hotspot.PrimaryFuel)
+            else if (oldData.FireState != tile.Hotspot.State)
             {
                 changed = true;
-                oldData = new GasOverlayData(tile.Hotspot.State, oldData.Opacity, tile.Hotspot.PrimaryFuel);
+                oldData = new GasOverlayData(tile.Hotspot.State, oldData.Opacity);
             }
 
             if (tile is {Air: not null, NoGridTile: false})

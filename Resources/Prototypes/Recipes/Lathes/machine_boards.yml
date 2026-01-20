@@ -131,13 +131,13 @@
   id: HellfireFreezerMachineCircuitBoard
   result: HellfireFreezerMachineCircuitBoard
   unlockUses: 2
-
+  
 - type: latheRecipe
   parent: [ BaseGoldCircuitboardRecipe, BaseEngineeringMachineRecipeCategory ]
   id: StationAnchorCircuitboard
   result: StationAnchorCircuitboard
   unlockUses: 2
-
+  
 - type: latheRecipe
   parent: [ BaseGoldCircuitboardRecipe, BaseEngineeringMachineRecipeCategory ]
   id: SpaceHeaterMachineCircuitBoard
@@ -205,12 +205,6 @@
   parent: PortableGeneratorSuperPacmanMachineCircuitboard
   id: PortableGeneratorMegamanMachineCircuitboard
   result: PortableGeneratorMegamanMachineCircuitboard
-  unlockUses: 4
-
-- type: latheRecipe
-  parent: [ BaseGoldCircuitboardRecipe, BaseEngineeringMachineRecipeCategory ]
-  id: GasGeneratorMachineCircuitboard
-  result: GasGeneratorMachineCircuitboard
   unlockUses: 4
 
 ## Medical

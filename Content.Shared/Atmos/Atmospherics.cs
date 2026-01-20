@@ -177,11 +177,6 @@ namespace Content.Shared.Atmos
             [Gas.Plasma] = Loc.GetString("gas-plasma-abbreviation"),
             [Gas.Tritium] = Loc.GetString("gas-tritium-abbreviation"),
             [Gas.WaterVapor] = Loc.GetString("gas-water-vapor-abbreviation"),
-            [Gas.Hydrogen] = Loc.GetString("gas-hydrogen-abbreviation"),
-            [Gas.Chlorine] = Loc.GetString("gas-chlorine-abbreviation"),
-            [Gas.Fluorine] = Loc.GetString("gas-fluorine-abbreviation"),
-            [Gas.Methane] = Loc.GetString("gas-methane-abbreviation"),
-            [Gas.ChlorineTrifluoride] = Loc.GetString("gas-chlorine-trifluoride-abbreviation"),
         };
 
         #region Excited Groups
@@ -211,7 +206,7 @@ namespace Content.Shared.Atmos
         /// <summary>
         ///     Total number of gases. Increase this if you want to add more!
         /// </summary>
-        public const int TotalNumberOfGases = 14;
+        public const int TotalNumberOfGases = 9;
 
         /// <summary>
         ///     This is the actual length of the gases arrays in mixtures.
@@ -223,14 +218,10 @@ namespace Content.Shared.Atmos
         ///     Amount of heat released per mole of burnt hydrogen or tritium (hydrogen isotope)
         /// </summary>
         public const float FireHydrogenEnergyReleased = 284e3f; // hydrogen is 284 kJ/mol
-        /// <summary>
-        ///     Amount of heat released per mole of burnt methane (real-life: 890 kJ/mol, scaled for game balance)
-        /// </summary>
-        public const float FireMethaneEnergyReleased = 560e3f; // methane is 560 kJ/mol
         public const float FireMinimumTemperatureToExist = T0C + 100f;
         public const float FireMinimumTemperatureToSpread = T0C + 150f;
         public const float FireSpreadRadiosityScale = 0.85f;
-        public const float FirePlasmaEnergyReleased = 160e3f; // plasma's fictional energy
+        public const float FirePlasmaEnergyReleased = 160e3f; // methane is 16 kJ/mol, plus plasma's spark of magic
         public const float FireGrowthRate = 40000f;
 
         public const float SuperSaturationThreshold = 96f;
@@ -287,23 +278,6 @@ namespace Content.Shared.Atmos
         ///     The maximum portion of the N2O that can decompose each reaction tick. (50%)
         /// </summary>
         public const float N2ODecompositionRate = 2f;
-
-        /// <summary>
-        ///     Conversion rate divisor for Sabatier methane production.
-        ///     6 means up to ~16% of limiting reagent per tick.
-        /// </summary>
-        public const float SabatierConversionRate = 6f;
-
-        /// <summary>
-        ///     Minimum pressure (kPa) for Sabatier methane production.
-        /// </summary>
-        public const float SabatierMinimumPressure = 2000f;
-
-        /// <summary>
-        ///     Conversion rate divisor for ClF3 production.
-        ///     4 means up to 25% of limiting reagent per tick.
-        /// </summary>
-        public const float ClF3ProductionRate = 4f;
 
         /// <summary>
         ///     Divisor for Ammonia Oxygen reaction so that it doesn't happen instantaneously.
@@ -395,11 +369,6 @@ namespace Content.Shared.Atmos
         WaterVapor = 5,
         Ammonia = 6,
         NitrousOxide = 7,
-        Frezon = 8,
-        Hydrogen = 9,
-        Chlorine = 10,
-        Fluorine = 11,
-        Methane = 12,
-        ChlorineTrifluoride = 13
+        Frezon = 8
     }
 }

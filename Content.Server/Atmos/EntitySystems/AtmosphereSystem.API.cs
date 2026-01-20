@@ -438,21 +438,19 @@ public partial class AtmosphereSystem
     /// This clamps the temperature and volume of the hotspot to the maximum
     /// of the provided parameters and whatever's on the tile.</param>
     /// <param name="sparkSourceUid">Entity that started the exposure for admin logging.</param>
-    /// <param name="fuelGas">The gas fuel type for fire color. If null, determined automatically.</param>
     [PublicAPI]
     public void HotspotExpose(Entity<GridAtmosphereComponent?> grid,
         Vector2i tile,
         float exposedTemperature,
         float exposedVolume,
         EntityUid? sparkSourceUid = null,
-        bool soh = false,
-        Gas? fuelGas = null)
+        bool soh = false)
     {
         if (!_atmosQuery.Resolve(grid, ref grid.Comp, false))
             return;
 
         if (grid.Comp.Tiles.TryGetValue(tile, out var atmosTile))
-            HotspotExpose(grid.Comp, atmosTile, exposedTemperature, exposedVolume, soh, sparkSourceUid, fuelGas);
+            HotspotExpose(grid.Comp, atmosTile, exposedTemperature, exposedVolume, soh, sparkSourceUid);
     }
 
     /// <summary>
@@ -469,20 +467,18 @@ public partial class AtmosphereSystem
     /// This clamps the temperature and volume of the hotspot to the maximum
     /// of the provided parameters and whatever's on the tile.</param>
     /// <param name="sparkSourceUid">Entity that started the exposure for admin logging.</param>
-    /// <param name="fuelGas">The gas fuel type for fire color. If null, determined automatically.</param>
     [PublicAPI]
     public void HotspotExpose(TileAtmosphere tile,
         float exposedTemperature,
         float exposedVolume,
         EntityUid? sparkSourceUid = null,
-        bool soh = false,
-        Gas? fuelGas = null)
+        bool soh = false)
     {
         if (!_atmosQuery.TryGetComponent(tile.GridIndex, out var atmos))
             return;
 
         DebugTools.Assert(atmos.Tiles.TryGetValue(tile.GridIndices, out var tmp) && tmp == tile);
-        HotspotExpose(atmos, tile, exposedTemperature, exposedVolume, soh, sparkSourceUid, fuelGas);
+        HotspotExpose(atmos, tile, exposedTemperature, exposedVolume, soh, sparkSourceUid);
     }
 
     /// <summary>

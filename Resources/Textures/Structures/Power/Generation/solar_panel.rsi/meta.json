@@ -30,12 +30,6 @@
 			"name": "solar_panel_uranium"
 		},
 		{
-			"name": "solar_panel_phoron"
-		},
-		{
-			"name": "solar_panel_phoron_broken"
-		},
-		{
 			"name": "solar_tracker"
 		},
 		{
@@ -55,9 +49,6 @@
 		},
 		{
 			"name": "solar_panel_uranium_uncabled"
-		},
-		{
-			"name": "solar_panel_phoron_uncabled"
 		},
 		{
 			"name": "solar_tracker_uncabled"

@@ -41,22 +41,12 @@ namespace Content.Client.Atmos.Overlays
 
         // Fire overlays
         private const int FireStates = 3;
-        private const string FireRsiPath = "/Textures/Effects/fire_greyscale.rsi"; // Use greyscale textures for color modulation
+        private const string FireRsiPath = "/Textures/Effects/fire.rsi";
 
         private readonly float[] _fireTimer = new float[FireStates];
         private readonly float[][] _fireFrameDelays = new float[FireStates][];
         private readonly int[] _fireFrameCounter = new int[FireStates];
         private readonly Texture[][] _fireFrames = new Texture[FireStates][];
-
-        // Fire colors for different gas types
-        private static readonly Dictionary<Gas, Color> FireColors = new()
-        {
-            [Gas.Plasma] = Color.FromHex("#FF66FF"), // Pink/Magenta
-            [Gas.Tritium] = Color.FromHex("#FF66FF"), // Pink/Magenta (same as plasma)
-            [Gas.Methane] = Color.FromHex("#4488FF"), // Blue
-            [Gas.Hydrogen] = Color.FromHex("#AACCFF"), // Pale blue/cyan
-            [Gas.ChlorineTrifluoride] = Color.FromHex("#FFFF00"), // Pale yellow-green - characteristic of ClF3 combustion
-        };
 
         private int _gasCount;
 
@@ -262,11 +252,7 @@ namespace Content.Client.Atmos.Overlays
 
                             var fireState = gas.FireState - 1;
                             var texture = state.fireFrames[fireState][state.fireFrameCounter[fireState]];
-
-                            // Get fire color based on the fuel gas type
-                            var fireColor = FireColors.GetValueOrDefault(gas.FireGas, Color.FromHex("#FF8833")); // Default to orange
-
-                            state.drawHandle.DrawTexture(texture, index, fireColor);
+                            state.drawHandle.DrawTexture(texture, index);
                         }
                     }
 

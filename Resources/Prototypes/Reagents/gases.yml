@@ -394,32 +394,3 @@
         messages: [ "frezon-euphoric" ]
         probability: 0.1
         minScale: 1
-
-- type: reagent
-  id: Methane
-  name: reagent-name-methane
-  desc: reagent-desc-methane
-  physicalDesc: reagent-physical-desc-gaseous
-  flavor: bitter
-  color: "#8B7D6B"
-  boilingPoint: -161.5
-  meltingPoint: -182.5
-  reactiveEffects:
-    Flammable:
-      methods: [ Touch ]
-      effects:
-      - !type:Flammable
-        multiplier: 0.9
-  metabolisms:
-    Gas:
-      effects:
-      - !type:HealthChange
-        damage:
-          types:
-            Asphyxiation: 0.5
-            Poison: 0.5
-      - !type:AdjustAlert
-        alertType: Toxins
-        minScale: 1.5
-        clear: True
-        time: 5
