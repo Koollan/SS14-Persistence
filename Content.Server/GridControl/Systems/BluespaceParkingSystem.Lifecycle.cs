@@ -279,6 +279,8 @@ public sealed partial class BluespaceParkingSystem : SharedBluespaceParkingSyste
             key.Comp.SavedGridName = gridName;
             key.Comp.State = BSPState.Parked;
 
+            UpdateAppearance(key, key.Comp);
+
             var notification = $"{key.Comp.SavedGridName} has been parked in bluespace.";
             _popup.PopupEntity(notification, key);
             _chat.TrySendInGameICMessage(key, notification, Shared.Chat.InGameICChatType.Whisper, Shared.Chat.ChatTransmitRange.Normal, ignoreActionBlocker: true);
@@ -418,6 +420,8 @@ public sealed partial class BluespaceParkingSystem : SharedBluespaceParkingSyste
             key.Comp.SavedTileCount = null;
             key.Comp.SavedGridName = null;
             key.Comp.State = BSPState.Idle;
+
+            UpdateAppearance(key, key.Comp);
         }
         else
         {

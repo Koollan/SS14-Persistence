@@ -178,15 +178,27 @@
       sound:
         path: /Audio/Items/multitool_drop.ogg
     - type: Sprite
-      sprite: Objects/Tools/access_configurator.rsi
-      state: icon
+      sprite: Objects/Devices/anchor_key.rsi
+      layers:
+        - state: noid_unstored
+          map: ["enum.BSPAnchorKeyVisualLayers.Base"]
     - type: Item
       size: Small
+      sprite: Objects/Devices/anchor_key.rsi
     - type: Clothing
-      sprite: Objects/Tools/access_configurator.rsi
+      sprite: Objects/Devices/anchor_key.rsi
       quickEquip: false
       slots:
         - Belt
+    - type: Appearance
+    - type: GenericVisualizer
+      visuals:
+        enum.BSPAnchorKeyVisuals.State:
+          enum.BSPAnchorKeyVisualLayers.Base:
+            NoIdUnstored: { state: noid_unstored }
+            NoIdStored: { state: noid_stored }
+            IdUnstored: { state: id_unstored }
+            IdStored: { state: id_stored }
     - type: BSPAnchorKey
       privilegedIdSlot:
         name: id-card-console-privileged-id

@@ -10,8 +10,6 @@ public sealed partial class BluespaceParkingSystem : SharedBluespaceParkingSyste
     {
         SubscribeLocalEvent<BSPParkingTargetComponent, MoveEvent>(OnTargetMove);
         SubscribeLocalEvent<BSPAnchorKeyComponent, ComponentStartup>(UpdateUserInterface);
-        SubscribeLocalEvent<BSPAnchorKeyComponent, EntInsertedIntoContainerMessage>(UpdateUserInterface);
-        SubscribeLocalEvent<BSPAnchorKeyComponent, EntRemovedFromContainerMessage>(UpdateUserInterface);
     }
 
     private void OnTargetMove(Entity<BSPParkingTargetComponent> ent, ref MoveEvent args)

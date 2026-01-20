@@ -153,6 +153,20 @@ public enum BSPAnchorKeyUiKey : byte
 }
 
 [Serializable, NetSerializable]
+public enum BSPAnchorKeyVisuals : byte
+{
+    HasId,
+    HasGrid,
+    State
+}
+
+[Serializable, NetSerializable]
+public enum BSPAnchorKeyVisualLayers : byte
+{
+    Base,
+}
+
+[Serializable, NetSerializable]
 public sealed class BSPAnchorKeyStartPark : BoundUserInterfaceMessage { }
 
 [Serializable, NetSerializable]
@@ -163,3 +177,12 @@ public sealed class BSPAnchorKeyStartUnpark : BoundUserInterfaceMessage { }
 
 [Serializable, NetSerializable]
 public sealed class BSPAnchorKeyToggleClearOwnership : BoundUserInterfaceMessage { }
+
+[Serializable, NetSerializable]
+public enum BSPAnchorKeyVisualState : byte
+{
+    NoIdUnstored,
+    NoIdStored,
+    IdUnstored,
+    IdStored
+}
