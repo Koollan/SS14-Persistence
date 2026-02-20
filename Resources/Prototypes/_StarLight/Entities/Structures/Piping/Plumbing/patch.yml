@@ -1,0 +1,27 @@
+# Minimal Patch entity for use with the Plumbing Pill Press machine.
+# Produced by PlumbingPillPress when set to Patch output mode.
+
+- type: entity
+  abstract: true
+  parent: BaseHealingItem
+  id: BasePatch
+  name: patch
+  description: On-touch administration of chemicals.
+  components:
+  - type: Item
+    size: Small
+  - type: SolutionContainerManager
+    solutions:
+      patch:
+        maxVol: 20
+  - type: Patch
+  - type: Tag
+    tags:
+      - Patch
+  - type: Extractable
+    grindableSolutionName: patch
+
+- type: entity
+  parent: BasePatch
+  id: Patch
+  suffix: Empty

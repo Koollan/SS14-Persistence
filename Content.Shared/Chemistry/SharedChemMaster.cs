@@ -14,6 +14,7 @@ namespace Content.Shared.Chemistry
         public const string InputSlotName = "beakerSlot";
         public const string OutputSlotName = "outputSlot";
         public const string PillSolutionName = "food";
+        public const string PatchSolutionName = "patch"; // Starlight Plumbing
         public const string BottleSolutionName = "drink";
         public const uint LabelMaxLength = 50;
     }

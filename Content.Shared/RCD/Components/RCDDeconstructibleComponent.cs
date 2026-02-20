@@ -31,4 +31,12 @@ public sealed partial class RCDDeconstructableComponent : Component
     /// </summary>
     [DataField, ViewVariables(VVAccess.ReadWrite)]
     public bool Deconstructable = true;
+
+    // Starlight Plumbing Start
+    /// <summary>
+    /// Toggles whether this entity is deconstructable by the RPLD (plumbing) or not
+    /// </summary>
+    [DataField("rpld"), ViewVariables(VVAccess.ReadWrite)]
+    public bool RpldDeconstructable = false;
+    // Starlight Plumbing End
 }
