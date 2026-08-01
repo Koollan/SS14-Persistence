@@ -33,32 +33,95 @@ public sealed partial class CrewMetaRecordsComponent : Component
     public Dictionary<string, CrewMetaRecord> CrewMetaRecords { get; set; } = new();
     [DataField]
     public Dictionary<int, EntityUid> Stations { get; set; } = new();
+    public bool TryGetRecord(int legalID, out CrewMetaRecord? record)
+    {
+        foreach (var currRecord in CrewMetaRecords.Values)
+        {
+            if (currRecord.LegalID == legalID)
+            {
+                record = currRecord;
+                return true;
+            }
+        }
+
+        record = null;
+        return false;
+    }
+
     public bool TryGetRecord(string name, out CrewMetaRecord? record)
     {
-        if (CrewMetaRecords.TryGetValue(name, out var currRecord))
+        foreach (var currRecord in CrewMetaRecords.Values)
         {
-            record = currRecord;
+            if (currRecord.Name == name || currRecord.RealName == name || currRecord.CustomName == name)
+            {
+                record = currRecord;
+                return true;
+            }
+        }
+
+        record = null;
+        return false;
+    }
+
+    public bool CreateRecord(int legalID, string realName, out CrewMetaRecord? record)
+    {
+        if (TryGetRecord(legalID, out record))
+            return false;
+
+        record = new CrewMetaRecord(legalID, realName);
+
+        var key = legalID.ToString();
+        if (CrewMetaRecords.ContainsKey(key))
+            key = $"{key}:{realName}";
+
+        CrewMetaRecords[key] = record;
+        return true;
+    }
+
+    public bool TryEnsureRecord(int legalID, string realName, out CrewMetaRecord? record, EntityManager? entityManager = null)
+    {
+        if (TryGetRecord(legalID, out record))
+            return true;
+
+        if (TryGetRecord(realName, out record) && record != null)
+        {
+            var changed = false;
+            if (record.LegalID <= 0)
+            {
+                record.LegalID = legalID;
+                changed = true;
+            }
+
+            if (record.RealName != realName)
+            {
+                record.RealName = realName;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.CustomName))
+            {
+                record.CustomName = realName;
+                changed = true;
+            }
+
+            if (changed && entityManager != null)
+                entityManager.Dirty(Owner, this);
+
             return true;
         }
-        else
-        {
-            record = null;
-            return false;
-        }
-    }
-    public bool CreateRecord(string recordname, out CrewMetaRecord? record)
-    {
-        if (CrewMetaRecords.TryGetValue(recordname, out record)) return false;
-        record = new CrewMetaRecord(recordname);
-        CrewMetaRecords.Add(recordname, record);
-        return true;
-    }
-    public bool TryEnsureRecord(string name, out CrewMetaRecord? record, EntityManager? entityManager = null)
-    {
-        if (TryGetRecord(name, out record)) return true;
-        CreateRecord(name, out record);
+
+        CreateRecord(legalID, realName, out record);
         if (entityManager != null) entityManager.Dirty(Owner, this);
         return true;
+    }
+
+    public bool TryEnsureRecord(string name, out CrewMetaRecord? record, EntityManager? entityManager = null)
+    {
+        if (TryGetRecord(name, out record))
+            return true;
+
+        record = null;
+        return false;
     }
 }
 
@@ -71,6 +134,12 @@ public partial class CrewMetaRecord
     [DataField("_name")]
     public string Name = "Unnamed Crew Meta Record";
     [DataField]
+    public int LegalID;
+    [DataField]
+    public string RealName = "Unnamed Crew Meta Record";
+    [DataField]
+    public string CustomName = "Unnamed Crew Meta Record";
+    [DataField]
     public DateTime LatestIDTime;
     [DataField]
     public ProtoId<NetworkLevelPrototype> Level = "NetworkLevel1";
@@ -81,8 +150,18 @@ public partial class CrewMetaRecord
     [DataField(customTypeSerializer: typeof(TimeOffsetSerializer))]
     public TimeSpan NextMessageBoardComment = TimeSpan.Zero;
 
+    public CrewMetaRecord(int legalID, string realName)
+    {
+        LegalID = legalID;
+        Name = realName;
+        RealName = realName;
+        CustomName = realName;
+    }
+
     public CrewMetaRecord(string name)
     {
         Name = name;
+        RealName = name;
+        CustomName = name;
     }
 }

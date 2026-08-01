@@ -25,6 +25,24 @@ namespace Content.Shared.Mind;
 [RegisterComponent, NetworkedComponent, AutoGenerateComponentState(true)]
 public sealed partial class MindComponent : Component
 {
+    /// <summary>
+    ///     Stable legal identity number for this mind.
+    /// </summary>
+    [DataField, AutoNetworkedField, ViewVariables(VVAccess.ReadWrite)]
+    public int LegalID { get; set; }
+
+    /// <summary>
+    ///     The canonical name tied to the legal identity.
+    /// </summary>
+    [DataField, AutoNetworkedField, ViewVariables(VVAccess.ReadWrite)]
+    public string? RealName { get; set; }
+
+    /// <summary>
+    ///     The current chosen or displayed name for this identity.
+    /// </summary>
+    [DataField, AutoNetworkedField, ViewVariables(VVAccess.ReadWrite)]
+    public string? CustomName { get; set; }
+
     [DataField, AutoNetworkedField]
     public List<EntityUid> Objectives = new();
 

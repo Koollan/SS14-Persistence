@@ -11,10 +11,12 @@ using Content.Shared.GameTicking;
 using Content.Shared.Roles;
 using Content.Shared.Station.Components;
 using Content.Shared.StationRecords;
+using Content.Shared.StatusIcon;
 using Robust.Shared.Configuration;
 using Robust.Shared.Console;
 using Robust.Shared.Player;
 using Robust.Shared.Prototypes;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace Content.Server.CrewManifest;
@@ -218,35 +220,24 @@ public sealed class CrewManifestSystem : EntitySystem
         if (!TryComp<StationDataComponent>(station, out var sD) || sD == null) return;
         if (!TryComp<CrewRecordsComponent>(station, out var crewRecords) || crewRecords == null) return;
         if (!TryComp<CrewAssignmentsComponent>(station, out var crewAssignments) || crewAssignments == null) return;
-        List<EntityUid> activeWorkers = new();
-        var query = EntityQueryEnumerator<JobNetComponent>();
-        while (query.MoveNext(out var uid, out var comp))
-        {
-            if (comp.WorkingFor != null && comp.WorkingFor == sD.UID)
-            {
-                activeWorkers.Add(comp.Owner);
-            }
-        }
+
         var entries = new CrewManifestEntries();
 
         var entriesSort = new List<(JobPrototype? job, CrewManifestEntry entry)>();
-        foreach (var employee in activeWorkers)
+        foreach (var record in crewRecords.CrewRecords.Values)
         {
-            EntityUid? player = null;
-#pragma warning disable RA0030 // Consider using the non-generic variant of this method
-            if (TryComp<TransformComponent>(employee, out var comp) && comp != null)
-            {
-                player = comp.ParentUid;
-            }
-#pragma warning restore RA0030 // Consider using the non-generic variant of this method
-            if (player == null) continue;
-            var name = Name(player.Value);
-            if (!crewRecords.TryGetRecord(name, out var record) || record == null) continue;
             if (!crewAssignments.TryGetAssignment(record.AssignmentID, out var assignment) || assignment == null) continue;
 
-            var entry = new CrewManifestEntry(name, assignment.Name, "JobIconUnknown", "Passenger");
+            var displayName = string.IsNullOrWhiteSpace(record.CustomName)
+                ? string.IsNullOrWhiteSpace(record.RealName) ? record.Name : record.RealName
+                : record.CustomName;
 
-            _prototypeManager.TryIndex(PassengerProtoID, out JobPrototype? job);
+            var jobProtoId = PassengerProtoID;
+            if (TryResolveJobPrototypeFromIcon(assignment.JobIcon, out var job))
+                jobProtoId = job.ID;
+
+            var entry = new CrewManifestEntry(displayName, assignment.Name, assignment.JobIcon, jobProtoId);
+
             entriesSort.Add((job, entry));
         }
 
@@ -261,6 +252,21 @@ public sealed class CrewManifestSystem : EntitySystem
 
         entries.Entries = entriesSort.Select(x => x.entry).ToArray();
         _cachedEntries[station] = entries;
+    }
+
+    private bool TryResolveJobPrototypeFromIcon(ProtoId<JobIconPrototype> icon, [NotNullWhen(true)] out JobPrototype? job)
+    {
+        foreach (var jobPrototype in _prototypeManager.EnumeratePrototypes<JobPrototype>())
+        {
+            if (jobPrototype.Icon == icon)
+            {
+                job = jobPrototype;
+                return true;
+            }
+        }
+
+        job = null;
+        return false;
     }
 }
 

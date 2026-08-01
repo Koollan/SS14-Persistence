@@ -150,10 +150,12 @@ public abstract partial class SharedChatSystem : EntitySystem
         string input,
         out string output,
         out RadioChannelPrototype? channel,
+        out int? encryptionID,
         bool quiet = false)
     {
         output = input.Trim();
         channel = null;
+        encryptionID = null;
 
         if (input.Length == 0)
             return false;
@@ -187,6 +189,14 @@ public abstract partial class SharedChatSystem : EntitySystem
 
             if (ev.Channel != null)
                 _prototypeManager.TryIndex(ev.Channel, out channel);
+            return true;
+        }
+
+        var customEv = new ResolveCustomRadioChannelEvent(channelKey);
+        RaiseLocalEvent(source, customEv);
+        if (customEv.Channel != null && _prototypeManager.TryIndex(customEv.Channel, out channel))
+        {
+            encryptionID = customEv.EncryptionID;
             return true;
         }
 

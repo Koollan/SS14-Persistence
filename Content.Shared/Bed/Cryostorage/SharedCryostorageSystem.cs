@@ -184,7 +184,8 @@ public abstract class SharedCryostorageSystem : EntitySystem
     {
         var comp = ent.Comp;
 
-        CompOrNull<CryostorageComponent>(comp.Cryostorage)?.StoredPlayers.Remove(ent);
+        if (TryGetCryostorage(ent, out var cryostorage) && TryComp<CryostorageComponent>(cryostorage, out var cryostorageComp))
+            cryostorageComp.StoredPlayers.Remove(ent);
         ent.Comp.Cryostorage = null;
         Dirty(ent, comp);
     }
@@ -220,6 +221,25 @@ public abstract class SharedCryostorageSystem : EntitySystem
         comp ??= Transform(entity);
 
         return comp.MapUid != null && comp.MapUid == PausedMap;
+    }
+
+    protected bool TryGetCryostorage(Entity<CryostorageContainedComponent> entity, out EntityUid cryostorage)
+    {
+        if (entity.Comp.Cryostorage is { Valid: true } stored && TryComp(stored, out CryostorageComponent? _))
+        {
+            cryostorage = stored;
+            return true;
+        }
+
+        var parent = Transform(entity).ParentUid;
+        if (TryComp(parent, out CryostorageComponent? _))
+        {
+            cryostorage = parent;
+            return true;
+        }
+
+        cryostorage = EntityUid.Invalid;
+        return false;
     }
 }
 

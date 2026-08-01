@@ -9,8 +9,10 @@ using Content.Shared.Examine;
 using Content.Shared.Radio;
 using Content.Shared.Radio.Components;
 using Content.Shared.Speech;
+using Content.Shared.Station.Components;
 using Robust.Shared.Configuration;
 using Robust.Shared.Map;
+using Robust.Shared.Maths;
 using Robust.Shared.Network;
 using Robust.Shared.Player;
 using Robust.Shared.Prototypes;
@@ -82,9 +84,9 @@ public sealed class RadioSystem : EntitySystem
     /// <summary>
     /// Send radio message to all active radio listeners
     /// </summary>
-    public void SendRadioMessage(EntityUid messageSource, string message, ProtoId<RadioChannelPrototype> channel, EntityUid radioSource, bool escapeMarkup = true, bool useNetworkOverride = true)
+    public void SendRadioMessage(EntityUid messageSource, string message, ProtoId<RadioChannelPrototype> channel, EntityUid radioSource, bool escapeMarkup = true, bool useNetworkOverride = true, int encryptionID = 0)
     {
-        SendRadioMessage(messageSource, message, _prototype.Index(channel), radioSource, escapeMarkup: escapeMarkup, useNetworkOverride);
+        SendRadioMessage(messageSource, message, _prototype.Index(channel), radioSource, escapeMarkup: escapeMarkup, useNetworkOverride, encryptionID);
     }
 
     /// <summary>
@@ -92,7 +94,7 @@ public sealed class RadioSystem : EntitySystem
     /// </summary>
     /// <param name="messageSource">Entity that spoke the message</param>
     /// <param name="radioSource">Entity that picked up the message and will send it, e.g. headset</param>
-    public void SendRadioMessage(EntityUid messageSource, string message, RadioChannelPrototype channel, EntityUid radioSource, bool escapeMarkup = true, bool useNetworkOverride = true)
+    public void SendRadioMessage(EntityUid messageSource, string message, RadioChannelPrototype channel, EntityUid radioSource, bool escapeMarkup = true, bool useNetworkOverride = true, int encryptionID = 0)
     {
         // TODO if radios ever garble / modify messages, feedback-prevention needs to be handled better than this.
         if (!_messages.Add(message))
@@ -116,12 +118,24 @@ public sealed class RadioSystem : EntitySystem
             ? FormattedMessage.EscapeText(message)
             : message;
 
+        var displayColor = channel.Color;
+        var displayName = channel.LocalizedName;
+
+        if (encryptionID > 0)
+        {
+            ResolveCustomChannelPresentation(encryptionID, channel, ref displayColor, ref displayName);
+        }
+        else if (TryComp<HeadsetComponent>(radioSource, out var sourceHeadset) && sourceHeadset.TransmitTo.Count > 0)
+        {
+            ResolveCustomChannelPresentation(sourceHeadset.TransmitTo.First(), channel, ref displayColor, ref displayName);
+        }
+
         var wrappedMessage = Loc.GetString(speech.Bold ? "chat-radio-message-wrap-bold" : "chat-radio-message-wrap",
-            ("color", channel.Color),
+            ("color", displayColor),
             ("fontType", speech.FontId),
             ("fontSize", speech.FontSize),
             ("verb", Loc.GetString(_random.Pick(speech.SpeechVerbStrings))),
-            ("channel", $"\\[{channel.LocalizedName}\\]"),
+            ("channel", $"\\[{displayName}\\]"),
             ("name", name),
             ("message", content));
 
@@ -175,10 +189,9 @@ public sealed class RadioSystem : EntitySystem
             hasActiveServer = true;// HasActiveServer(sourceMapId, channel.ID);
 
         var radioQuery = EntityQueryEnumerator<ActiveRadioComponent, TransformComponent>();
-        var encryptionID = 0;
-        if (TryComp<HeadsetComponent>(radioSource, out var headset) && headset != null)
+        if (encryptionID <= 0 && TryComp<HeadsetComponent>(radioSource, out var headset) && headset != null && headset.TransmitTo.Count > 0)
         {
-            encryptionID = headset.TransmitTo;
+            encryptionID = headset.TransmitTo.First();
         }
         while (canSend && radioQuery.MoveNext(out var receiver, out var radio, out var transform))
         {
@@ -189,7 +202,7 @@ public sealed class RadioSystem : EntitySystem
 
             else if (TryComp<HeadsetComponent>(receiver, out var targetHeadset) && targetHeadset != null)
             {
-                if (targetHeadset.RecieveFrom != 0 && targetHeadset.RecieveFrom != encryptionID)
+                if (targetHeadset.RecieveFrom.Count > 0 && !targetHeadset.RecieveFrom.Contains(encryptionID))
                 {
                     continue;
                 }
@@ -275,6 +288,20 @@ public sealed class RadioSystem : EntitySystem
             }
         }
         return false;
+    }
+
+    private void ResolveCustomChannelPresentation(int stationId, RadioChannelPrototype channel, ref Color color, ref string name)
+    {
+        var station = _station.GetStationByID(stationId);
+        if (station == null || !TryComp<StationDataComponent>(station, out var stationData))
+            return;
+
+        if (!stationData.RadioData.TryGetValue(channel.ID, out var radioData) || !radioData.IsCustom)
+            return;
+
+        color = radioData.GetColor();
+        if (!string.IsNullOrWhiteSpace(radioData.CustomName))
+            name = radioData.CustomName;
     }
 
 }

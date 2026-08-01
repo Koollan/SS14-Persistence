@@ -1,5 +1,6 @@
 using Content.Server.Chat.Systems;
 using Content.Server.Containers;
+using Content.Server.CrewRecords.Systems;
 using Content.Server.Station.Systems;
 using Content.Server.StationRecords.Systems;
 using Content.Shared.Access;
@@ -49,6 +50,7 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
     [Dependency] private readonly StationSystem _station = default!;
     [Dependency] private readonly PaperSystem _paperSystem = default!;
     [Dependency] private readonly MetaDataSystem _metaData = default!;
+    [Dependency] private readonly CrewMetaRecordsSystem _crewMeta = default!;
 
     public override void Initialize()
     {
@@ -89,6 +91,107 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
         return record;
     }
 
+    private CrewRecord? TryResolveRecord(EntityUid uid, string query)
+    {
+        query = query.Trim();
+        if (string.IsNullOrWhiteSpace(query))
+            return null;
+
+        var station = _station.GetOwningStation(uid);
+        if (station == null)
+            return null;
+
+        if (!TryComp(station, out CrewRecordsComponent? stationData) || stationData == null)
+            return null;
+
+        if (int.TryParse(query, out var legalId) && stationData.TryGetRecord(legalId, out var legalRecord))
+            return legalRecord;
+
+        if (stationData.TryGetRecord(query, out var namedRecord))
+            return namedRecord;
+
+        // Fallback to a case-insensitive lookup for old or inconsistently cased record data.
+        foreach (var record in stationData.CrewRecords.Values)
+        {
+            if (string.Equals(record.Name, query, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(record.RealName, query, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(record.CustomName, query, StringComparison.OrdinalIgnoreCase)
+                || (record.LegalID > 0 && record.LegalID.ToString() == query))
+            {
+                return record;
+            }
+        }
+
+        // Backfill from meta records when crew records are missing.
+        if (_crewMeta.MetaRecords != null)
+        {
+            if (int.TryParse(query, out legalId) && _crewMeta.MetaRecords.TryGetRecord(legalId, out var metaByLegal) && metaByLegal != null)
+            {
+                stationData.TryEnsureRecord(metaByLegal.LegalID > 0 ? metaByLegal.LegalID : legalId,
+                    string.IsNullOrWhiteSpace(metaByLegal.RealName) ? metaByLegal.Name : metaByLegal.RealName,
+                    out var backfilled,
+                    EntityManager);
+
+                if (backfilled != null && !string.IsNullOrWhiteSpace(metaByLegal.CustomName))
+                    backfilled.CustomName = metaByLegal.CustomName;
+
+                return backfilled;
+            }
+
+            if (_crewMeta.MetaRecords.TryGetRecord(query, out var metaByName) && metaByName != null)
+            {
+                stationData.TryEnsureRecord(metaByName.LegalID,
+                    string.IsNullOrWhiteSpace(metaByName.RealName) ? metaByName.Name : metaByName.RealName,
+                    out var backfilled,
+                    EntityManager);
+
+                if (backfilled != null && !string.IsNullOrWhiteSpace(metaByName.CustomName))
+                    backfilled.CustomName = metaByName.CustomName;
+
+                return backfilled;
+            }
+        }
+
+        return null;
+    }
+
+    private CrewRecord? TryResolveRecord(EntityUid uid, IdCardComponent idCard)
+    {
+        var station = _station.GetOwningStation(uid);
+        if (station == null)
+            return null;
+
+        if (!TryComp(station, out CrewRecordsComponent? stationData) || stationData == null)
+            return null;
+
+        if (idCard.LegalID > 0 && stationData.TryGetRecord(idCard.LegalID, out var legalRecord))
+            return legalRecord;
+
+        if (!string.IsNullOrWhiteSpace(idCard.FullName) && stationData.TryGetRecord(idCard.FullName, out var namedRecord))
+            return namedRecord;
+
+        if (idCard.LegalID > 0 && !string.IsNullOrWhiteSpace(idCard.FullName))
+        {
+            stationData.TryEnsureRecord(idCard.LegalID, idCard.FullName, out var ensured, EntityManager);
+            return ensured;
+        }
+
+        return null;
+    }
+
+    private static bool IsOwnerNameMatch(StationDataComponent stationData, CrewRecord? record, string? fullName)
+    {
+        if (!string.IsNullOrWhiteSpace(fullName) && stationData.Owners.Contains(fullName))
+            return true;
+
+        if (record == null)
+            return false;
+
+        return stationData.Owners.Contains(record.Name)
+               || stationData.Owners.Contains(record.RealName)
+               || stationData.Owners.Contains(record.CustomName);
+    }
+
     private void OnEntInserted(EntityUid uid, IdCardConsoleComponent component, EntInsertedIntoContainerMessage args)
     {
         if (component.TargetIdSlot.Item == args.Entity)
@@ -96,8 +199,8 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
             if (component.TargetIdSlot.Item is { Valid: true } targetId) // targetID lsot occupied
             {
                 var idComponent = Comp<IdCardComponent>(targetId);
-                if (idComponent != null && idComponent.FullName != null)
-                    component.SelectedRecord = TryEnsureRecord(uid, idComponent.FullName);
+                if (idComponent != null)
+                    component.SelectedRecord = TryResolveRecord(uid, idComponent);
             }
         }
 
@@ -190,9 +293,17 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
     {
         if (args.Actor is not { Valid: true } player)
             return;
-        if (component.SelectedRecord == null || component.SelectedRecord.Name != args.FullName)
+        var query = args.FullName.Trim();
+        if (string.IsNullOrWhiteSpace(query))
+            return;
+
+        if (component.SelectedRecord == null
+            || (component.SelectedRecord.Name != query
+                && component.SelectedRecord.RealName != query
+                && component.SelectedRecord.CustomName != query
+                && component.SelectedRecord.LegalID.ToString() != query))
         {
-            component.SelectedRecord = TryEnsureRecord(uid, args.FullName);
+            component.SelectedRecord = TryResolveRecord(uid, query);
         }
 
         UpdateUserInterface(uid, component, args);
@@ -240,7 +351,8 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
         var owner = false;
         if (TryComp(station, out StationDataComponent? sD))
         {
-            if (component.PrivRecord.Name != null && sD.Owners.Contains(component.PrivRecord.Name)) owner = true;
+            if (component.PrivilegedIdSlot.Item is { Valid: true } privId && TryComp<IdCardComponent>(privId, out var privIdComp))
+                owner = IsOwnerNameMatch(sD, component.PrivRecord, privIdComp.FullName);
         }
         else
         {
@@ -317,16 +429,11 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
         {
             privilegedIdName = Comp<MetaDataComponent>(privId).EntityName;
             var privIdComponent = Comp<IdCardComponent>(privId);
-            if (component.PrivRecord == null || component.PrivRecord.Name != privIdComponent.FullName)
+            if (component.PrivRecord == null
+                || (privIdComponent.LegalID > 0 && component.PrivRecord.LegalID != privIdComponent.LegalID)
+                || (privIdComponent.LegalID <= 0 && component.PrivRecord.Name != privIdComponent.FullName))
             {
-                if (privIdComponent != null && privIdComponent.FullName != null)
-                {
-                    component.PrivRecord = TryEnsureRecord(uid, privIdComponent.FullName);
-                }
-                else
-                {
-                    component.PrivRecord = null;
-                }
+                component.PrivRecord = TryResolveRecord(uid, privIdComponent);
 
             }
             if (component.PrivRecord != null)
@@ -335,7 +442,7 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
             }
             if (TryComp(station, out StationDataComponent? sD))
             {
-                if (privIdComponent != null && privIdComponent.FullName != null && sD.Owners.Contains(privIdComponent.FullName)) owner = true;
+                owner = IsOwnerNameMatch(sD, component.PrivRecord, privIdComponent.FullName);
             }
         }
         else

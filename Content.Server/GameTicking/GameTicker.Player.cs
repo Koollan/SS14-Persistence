@@ -46,12 +46,15 @@ namespace Content.Server.GameTicking
             }
             if (session.GetMind() != mindId && body != null && body != EntityUid.Invalid)
             {
+                if (mindId == null)
+                    return false;
+
                 PlayerJoinGame(session, true);
                 var station = EntityUid.Invalid;
                 //   _mind.SetUserId((EntityUid)mindId!, session.UserId, mind);
                 _mind.WipeMind(body);
                 var newMind = _mind.CreateMind(session.UserId, mind!.CharacterName);
-                _mind.SetUserId(newMind, session.UserId);
+                _mind.TransferMindIdentity(mindId.Value, newMind.Owner);
                 _mind.TransferTo(newMind, body);
                 _playerManager.SetAttachedEntity(session, body, true);
                 // We raise this event directed to the mob, but also broadcast it so game rules can do something now.
@@ -95,6 +98,9 @@ namespace Content.Server.GameTicking
             }
             if (session.GetMind() != mindId && body != null && body != EntityUid.Invalid)
             {
+                if (mindId == null)
+                    return;
+
                 if (session.Data.ContentDataUncast == null)
                 {
                     var data = new ContentPlayerData(session.UserId, args.Session.Name);
@@ -103,7 +109,7 @@ namespace Content.Server.GameTicking
                 }
                 //   _mind.SetUserId((EntityUid)mindId!, session.UserId, mind);
                 var newMind = _mind.CreateMind(session.UserId, mind!.CharacterName);
-                _mind.SetUserId(newMind, session.UserId);
+                _mind.TransferMindIdentity(mindId.Value, newMind.Owner);
                 _mind.TransferTo(newMind, body);
                 _playerManager.SetAttachedEntity(session, body, true);
             }

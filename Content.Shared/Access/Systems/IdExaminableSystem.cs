@@ -68,6 +68,7 @@ public sealed class IdExaminableSystem : EntitySystem
     private string GetNameAndJob(IdCardComponent id)
     {
         var jobSuffix = string.IsNullOrWhiteSpace(id.LocalizedJobTitle) ? string.Empty : $" ({id.LocalizedJobTitle})";
+        var idSuffix = id.LegalID > 0 ? $" [ID: {id.LegalID}]" : string.Empty;
 
         var val = string.IsNullOrWhiteSpace(id.FullName)
             ? Loc.GetString(id.NameLocId,
@@ -76,6 +77,6 @@ public sealed class IdExaminableSystem : EntitySystem
                 ("fullName", id.FullName),
                 ("jobSuffix", jobSuffix));
 
-        return val;
+        return $"{val}{idSuffix}";
     }
 }

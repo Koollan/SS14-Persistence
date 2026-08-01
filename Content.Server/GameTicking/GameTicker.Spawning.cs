@@ -175,6 +175,8 @@ namespace Content.Server.GameTicking
             // Can't spawn players with a dummy ticker!
             if (DummyTicker)
                 return;
+            if (player.AttachedEntity != null && player.AttachedEntity != EntityUid.Invalid)
+                return;
             var silent = true;
             var lateJoin = true;
             HumanoidCharacterProfile? character = GetPlayerProfile(player);
@@ -197,7 +199,7 @@ namespace Content.Server.GameTicking
 
             _bankSystem.EnsureAccount(character.Name, 50);
             if (_crewMetaRecords.MetaRecords != null)
-                _crewMetaRecords.MetaRecords.CreateRecord(character!.Name, out _);
+                _crewMetaRecords.MetaRecords.CreateRecord(newMind.Comp.LegalID, newMind.Comp.RealName ?? character.Name, out _);
             var mobMaybe = _stationSpawning.SpawnPlayerCharacterOnStation(station.Value, jobId, character);
             DebugTools.AssertNotNull(mobMaybe);
             var mob = mobMaybe!.Value;
@@ -205,6 +207,8 @@ namespace Content.Server.GameTicking
 
 
             _mind.TransferTo(newMind, mob);
+            SyncSpawnedIdLegalId(mob, newMind.Comp.LegalID);
+            SyncSpawnedIdLegalId(mob, newMind.Comp.LegalID);
 
             _roles.MindAddJobRole(newMind, silent: silent, jobPrototype: jobId);
             var jobName = _jobs.MindTryGetJobName(newMind);
@@ -256,6 +260,8 @@ namespace Content.Server.GameTicking
             // Can't spawn players with a dummy ticker!
             if (DummyTicker)
                 return;
+            if (player.AttachedEntity != null && player.AttachedEntity != EntityUid.Invalid)
+                return;
             if (TryRejoin(player)) return;
             var silent = true;
             var lateJoin = true;
@@ -281,8 +287,6 @@ namespace Content.Server.GameTicking
 
             _playTimeTrackings.PlayerRolesChanged(player);
             _bankSystem.EnsureAccount(character!.Name, 50);
-            if (_crewMetaRecords.MetaRecords != null)
-                _crewMetaRecords.MetaRecords.CreateRecord(character!.Name, out _);
 
             var saveFilePath = new ResPath($"{data!.UserId}]{character!.Name}");
             _loader.TryLoadEntity(saveFilePath, out var mobMaybe);
@@ -291,15 +295,33 @@ namespace Content.Server.GameTicking
             EntityUid? pe = eC.Owner;
             var mob = (EntityUid)pe;
 
-            if (_ent.TryGetComponent<MindContainerComponent>(mob, out var container))
+            EntityUid? loadedMindId = null;
+            if (_mind.TryGetMind(mob, out var existingMindId, out _))
+                loadedMindId = existingMindId;
+
+            var savedLegalId = 0;
+            string? savedRealName = null;
+            string? savedCustomName = null;
+            if (TryComp<CryostorageContainedComponent>(mob, out var cryoContained))
             {
-                if (container != null)
-                {
-                    _mind.WipeMind(mob);
-                }
+                savedLegalId = cryoContained.StoredLegalID;
+                savedRealName = cryoContained.StoredRealName;
+                savedCustomName = cryoContained.StoredCustomName;
             }
+
             var newMind = _mind.CreateMind(data!.UserId, character.Name);
             _mind.SetUserId(newMind, data.UserId);
+
+            if (loadedMindId != null)
+                _mind.TransferMindIdentity(loadedMindId.Value, newMind);
+            else if (savedLegalId > 0 || !string.IsNullOrWhiteSpace(savedRealName) || !string.IsNullOrWhiteSpace(savedCustomName))
+                _mind.ApplyMindIdentity(newMind, savedLegalId > 0 ? savedLegalId : null, savedRealName, savedCustomName);
+
+            if (_ent.TryGetComponent<MindContainerComponent>(mob, out var container) && container != null)
+                _mind.WipeMind(mob);
+
+            if (_crewMetaRecords.MetaRecords != null)
+                _crewMetaRecords.MetaRecords.TryEnsureRecord(newMind.Comp.LegalID, newMind.Comp.RealName ?? character.Name, out _, EntityManager);
             _mind.TransferTo(newMind, mob);
             _playerManager.SetAttachedEntity(player, mob, true);
 
@@ -624,10 +646,26 @@ namespace Content.Server.GameTicking
             mob = mobMaybe!.Value;
 
             _mind.TransferTo(newMind, mob);
+            SyncSpawnedIdLegalId(mob, newMind.Comp.LegalID);
 
             _roles.MindAddJobRole(newMind, silent: silent, jobPrototype: jobId);
             jobName = _jobs.MindTryGetJobName(newMind);
             _admin.UpdatePlayerList(player);
+        }
+
+        private void SyncSpawnedIdLegalId(EntityUid mob, int legalID)
+        {
+            if (legalID <= 0)
+                return;
+
+            if (!_idCard.TryFindIdCard(mob, out var idCard))
+                return;
+
+            if (idCard.Comp.LegalID == legalID)
+                return;
+
+            idCard.Comp.LegalID = legalID;
+            _ent.Dirty(idCard.Owner, idCard.Comp);
         }
 
         public void Respawn(ICommonSession player)

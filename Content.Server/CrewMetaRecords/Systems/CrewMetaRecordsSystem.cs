@@ -14,7 +14,7 @@ public sealed partial class CrewMetaRecordsSystem : SharedCrewMetaRecordsSystem
     public bool CharacterNameExists(string name)
     {
         if (_gameTicker.RunLevel != GameRunLevel.InRound) return true;
-        return MetaRecords != null && MetaRecords.CrewMetaRecords.ContainsKey(name);
+        return MetaRecords != null && MetaRecords.TryGetRecord(name, out _);
     }
 
     public void JoinFirstTime(ICommonSession session)
@@ -24,12 +24,23 @@ public sealed partial class CrewMetaRecordsSystem : SharedCrewMetaRecordsSystem
 
     public void DevalidateID(string name)
     {
-        if (MetaRecords != null && MetaRecords.CrewMetaRecords.TryGetValue(name, out var record))
+        if (MetaRecords != null && MetaRecords.TryGetRecord(name, out var record) && record != null)
         {
             record.LatestIDTime = DateTime.Now;
             _idCard.ExpireAllIds(name);
         }
 
+    }
+
+    public void DevalidateID(int legalID)
+    {
+        if (legalID <= 0)
+            return;
+
+        if (MetaRecords != null && MetaRecords.TryGetRecord(legalID, out var record) && record != null)
+            record.LatestIDTime = DateTime.Now;
+
+        _idCard.ExpireAllIds(legalID);
     }
 
 }

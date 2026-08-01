@@ -78,6 +78,8 @@ namespace Content.Client.Access.UI
         }
         public void UpdateState(IdCardConsoleBoundUserInterfaceState state)
         {
+            var hasSelectedRecord = state.CrewRecord != null;
+
             ListView.RemoveAllChildren();
             ModeTabs.SetTabTitle(0, "Record View");
             ModeTabs.SetTabTitle(1, "List View");
@@ -94,8 +96,9 @@ namespace Content.Client.Access.UI
                     var assignment = state.AllAssignments[record.AssignmentID];
                     assignmentName = assignment.Name;
                 }
-                button.Text = $"{record.Name} [{assignmentName}]";
-                button.OnPressed += _ => { SearchRecord(record.Name); };
+                var listName = string.IsNullOrWhiteSpace(record.CustomName) ? record.Name : record.CustomName;
+                button.Text = $"{listName} [{assignmentName}]";
+                button.OnPressed += _ => { SearchRecord(record.LegalID.ToString()); };
                 container.AddChild(button);
                 Control control = new();
                 control.HorizontalExpand = true;
@@ -116,16 +119,18 @@ namespace Content.Client.Access.UI
             TargetIdLabel.Text = state.TargetIdName;
 
             var interfaceEnabled =
-                state.IsPrivilegedIdPresent && state.IsPrivilegedIdAuthorized && state.TargetIdFullName != null && state.TargetIdFullName != "";
-            if (state.TargetIdFullName != null && state.TargetIdFullName != "")
+                state.IsPrivilegedIdPresent && state.IsPrivilegedIdAuthorized && hasSelectedRecord;
+            if (hasSelectedRecord)
             {
-                FullNameLineEdit.Text = state.TargetIdFullName;
-                SelectedAccountLabel.Text = state.TargetIdFullName;
+                FullNameLineEdit.Text = state.TargetIdFullName ?? string.Empty;
                 AccountDetails.Visible = true;
             }
             else
             {
-                SelectedAccountLabel.Text = "*None*";
+                FullNameLineEdit.Text = state.TargetIdFullName ?? string.Empty;
+                SelectedLegalIdLabel.Text = "*None*";
+                SelectedRealNameLabel.Text = "*None*";
+                SelectedCustomNameLabel.Text = "*None*";
                 AccountDetails.Visible = false;
             }
 
@@ -161,7 +166,7 @@ namespace Content.Client.Access.UI
                     var button = new AssignmentButton(id, assignment.Name);
                     button.OnPressed += (args) => { _owner.OnAssignmentPressed(args); };
                     AccessLevelControlContainer.AddChild(button);
-                    if (state.TargetIdFullName == null || state.TargetIdFullName.Length == 0 || (!state.IsOwner && state.PrivAssignment == null))
+                    if (!hasSelectedRecord || (!state.IsOwner && state.PrivAssignment == null))
                     {
                         button.Disabled = true;
                     }
@@ -182,6 +187,14 @@ namespace Content.Client.Access.UI
             }
             if (state.CrewRecord != null)
             {
+                SelectedLegalIdLabel.Text = state.CrewRecord.LegalID > 0 ? state.CrewRecord.LegalID.ToString() : "*None*";
+                SelectedRealNameLabel.Text = string.IsNullOrWhiteSpace(state.CrewRecord.RealName)
+                    ? state.CrewRecord.Name
+                    : state.CrewRecord.RealName;
+                SelectedCustomNameLabel.Text = string.IsNullOrWhiteSpace(state.CrewRecord.CustomName)
+                    ? state.CrewRecord.Name
+                    : state.CrewRecord.CustomName;
+
                 GeneralRecordLabel.SetMarkup(state.CrewRecord.GeneralRecord);
                 GeneralRecordTE.TextRope = new Rope.Leaf(state.CrewRecord.GeneralRecord);
 
@@ -190,6 +203,12 @@ namespace Content.Client.Access.UI
 
                 CriminalRecordLabel.SetMarkup(state.CrewRecord.CriminalRecord);
                 CriminalRecordTE.TextRope = new Rope.Leaf(state.CrewRecord.CriminalRecord);
+            }
+            else
+            {
+                SelectedLegalIdLabel.Text = "*None*";
+                SelectedRealNameLabel.Text = "*None*";
+                SelectedCustomNameLabel.Text = "*None*";
             }
             if (!state.IsOwner && state.PrivAssignment != null)
             {

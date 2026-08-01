@@ -467,6 +467,9 @@ public sealed partial class JobNetSystem : SharedJobNetSystem
 
     private void OnSelect(EntityUid uid, JobNetComponent component, JobNetSelectMessage args)
     {
+        if (!_mind.TryGetLegalID(args.Actor, out var legalID))
+            return;
+
         var station = _station.GetStationByID(args.ID);
         if (station == null || args.ID == 0)
         {
@@ -482,14 +485,14 @@ public sealed partial class JobNetSystem : SharedJobNetSystem
                 var sId = _station.GetStationByID(component.WorkingFor.Value);
                 if (sId != null) _crewManifest.BuildCrewManifest(sId.Value);
             }
-            _card.UpdateIDAssignment(Name(args.Actor), args.ID);
+            _card.UpdateIDAssignment(legalID, args.ID);
             UpdateUserInterface(args.Actor, uid, component);
             return;
         }
 
         if (TryComp<CrewRecordsComponent>(station, out var crewRecord) && crewRecord != null)
         {
-            if (crewRecord.TryGetRecord(Name(args.Actor), out var record) && record != null)
+            if (crewRecord.TryGetRecord(legalID, out var record) && record != null)
             {
                 if (TryComp<StationDataComponent>(station, out var stationData))
                 {
@@ -511,7 +514,7 @@ public sealed partial class JobNetSystem : SharedJobNetSystem
                                 var sId = _station.GetStationByID(component.WorkingFor.Value);
                                 if (sId != null) _crewManifest.BuildCrewManifest(sId.Value);
                             }
-                            _card.UpdateIDAssignment(Name(args.Actor), args.ID);
+                            _card.UpdateIDAssignment(legalID, args.ID);
                             UpdateUserInterface(args.Actor, uid, component);
                         }
                     }
@@ -768,9 +771,11 @@ public sealed partial class JobNetSystem : SharedJobNetSystem
         }
         if (player == null) return;
         var name = Name(player.Value);
+        if (!_mind.TryGetLegalID(player.Value, out var legalID))
+            return;
         if (TryComp<CrewRecordsComponent>(station, out var crewRecord) && crewRecord != null)
         {
-            if (crewRecord.TryGetRecord(name, out var record) && record != null)
+            if (crewRecord.TryGetRecord(legalID, out var record) && record != null)
             {
                 if (TryComp<StationDataComponent>(station, out var stationData))
                 {

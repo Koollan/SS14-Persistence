@@ -10,9 +10,11 @@ using Content.Shared.CrewAssignments.Components;
 using Content.Shared.CrewAssignments.Events;
 using Content.Shared.IdentityManagement;
 using Content.Shared.Station.Components;
+using Content.Shared.StatusIcon;
 using Robust.Client.GameObjects;
 using Robust.Client.Player;
 using Robust.Client.UserInterface.Controls;
+using Robust.Shared.Maths;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Utility;
 using System.Linq;
@@ -75,12 +77,15 @@ public sealed class StationModificationConsoleBoundUserInterface : BoundUserInte
         _menu.ClaimBtn.OnPressed += ToggleClaim;
         _menu.GenRecBtn.OnPressed += ToggleGenRec;
         _menu.ReassignmentBtn.OnPressed += ToggleAssign;
+        _menu.JobIconConfirm.OnPressed += ChangeJobIcon;
         _menu.ITaxConfirm.OnPressed += ChangeITax;
         _menu.ETaxConfirm.OnPressed += ChangeETax;
         _menu.STaxConfirm.OnPressed += ChangeSTax;
         _menu.LevelPurchaseButton.OnPressed += PurchaseUpgrade;
         _menu.ChannelEnable.OnPressed += OnChannelEnable;
         _menu.ChannelDisable.OnPressed += OnChannelDisable;
+        _menu.CreateChannelButton.OnPressed += OnCreateChannel;
+        _menu.EditChannelButton.OnPressed += OnEditChannel;
         _menu.JobNetOn.OnPressed += OnJobNetOn;
         _menu.JobNetOff.OnPressed += OnJobNetOff;
         _menu.OpenCentered();
@@ -210,29 +215,56 @@ public sealed class StationModificationConsoleBoundUserInterface : BoundUserInte
     private void ToggleChannelAccess(ButtonToggledEventArgs args)
     {
         if (_menu == null || _menu.RadioData == null) return;
-        var ind = _menu.PossibleChannels.SelectedId;
-        if (_menu.RadioData.Count - 1 < ind) return;
-        var kv = _menu.RadioData.ElementAtOrDefault(ind);
+        var channelId = _menu.SelectedChannelId;
+        if (channelId == null) return;
         Button real = (Button)args.Button;
         if (real == null || real.Text == null) return;
-        SendMessage(new StationModificationToggleChannelAccess(kv.Key, args.Pressed, real.Text));
+        SendMessage(new StationModificationToggleChannelAccess(channelId.Value, args.Pressed, real.Text));
     }
     private void OnChannelEnable(ButtonEventArgs args)
     {
         if (_menu == null || _menu.RadioData == null) return;
-        var ind = _menu.PossibleChannels.SelectedId;
-        if (_menu.RadioData.Count - 1 < ind) return;
-        var kv = _menu.RadioData.ElementAtOrDefault(ind);
-        SendMessage(new StationModificationEnableChannel(kv.Key));
+        var channelId = _menu.SelectedChannelId;
+        if (channelId == null) return;
+        SendMessage(new StationModificationEnableChannel(channelId.Value));
     }
 
     private void OnChannelDisable(ButtonEventArgs args)
     {
         if (_menu == null || _menu.RadioData == null) return;
-        var ind = _menu.PossibleChannels.SelectedId;
-        if (_menu.RadioData.Count - 1 < ind) return;
-        var kv = _menu.RadioData.ElementAtOrDefault(ind);
-        SendMessage(new StationModificationDisableChannel(kv.Key));
+        var channelId = _menu.SelectedChannelId;
+        if (channelId == null) return;
+        SendMessage(new StationModificationDisableChannel(channelId.Value));
+    }
+
+    private void OnCreateChannel(ButtonEventArgs args)
+    {
+        if (_menu == null) return;
+
+        var name = _menu.CustomChannelName.Text;
+        var hotkey = _menu.CustomChannelHotkey.Text;
+        var color = Color.ToSrgb(_menu.ChannelColorPicker.Color);
+        var red = color.RByte;
+        var green = color.GByte;
+        var blue = color.BByte;
+
+        SendMessage(new StationModificationCreateChannel(name, hotkey, red, green, blue));
+    }
+
+    private void OnEditChannel(ButtonEventArgs args)
+    {
+        if (_menu == null || _menu.RadioData == null)
+            return;
+
+        var channelId = _menu.SelectedChannelId;
+        if (channelId == null)
+            return;
+
+        var name = _menu.EditChannelName.Text;
+        var hotkey = _menu.EditChannelHotkey.Text;
+        var color = Color.ToSrgb(_menu.ChannelColorPicker.Color);
+
+        SendMessage(new StationModificationEditChannel(channelId.Value, name, hotkey, color.RByte, color.GByte, color.BByte));
     }
     private void ToggleAssignmentAccess(ButtonToggledEventArgs args)
     {
@@ -304,6 +336,17 @@ public sealed class StationModificationConsoleBoundUserInterface : BoundUserInte
 
         SendMessage(new StationModificationChangeAssignmentWage(assignment, wage));
     }
+
+    private void ChangeJobIcon(ButtonEventArgs args)
+    {
+        if (_menu == null) return;
+        var assignment = _menu.PossibleAssignments.SelectedId;
+        var jobIcon = _menu.SelectedJobIcon;
+        if (jobIcon == null) return;
+
+        SendMessage(new StationModificationChangeAssignmentJobIcon(assignment, jobIcon.Value));
+    }
+
     private void ChangeAssignmentName(ButtonEventArgs args)
     {
         if (_menu == null) return;

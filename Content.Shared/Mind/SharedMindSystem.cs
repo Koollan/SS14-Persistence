@@ -43,6 +43,9 @@ public abstract partial class SharedMindSystem : EntitySystem
 
     [ViewVariables]
     protected readonly Dictionary<NetUserId, EntityUid> UserMinds = new();
+    private readonly Dictionary<int, EntityUid> _legalIdIndex = new();
+    private const int LegalIdMin = 100_000;
+    private const int LegalIdMaxExclusive = 1_000_000;
 
     private HashSet<Entity<MindComponent>> _pickingMinds = new();
 
@@ -53,6 +56,7 @@ public abstract partial class SharedMindSystem : EntitySystem
         base.Initialize();
 
         SubscribeLocalEvent<MindContainerComponent, SuicideEvent>(OnSuicide);
+        SubscribeLocalEvent<MindComponent, ComponentShutdown>(OnMindShutdown);
 
         SubscribeLocalEvent<VisitingMindComponent, EntityTerminatingEvent>(OnVisitingTerminating);
         SubscribeLocalEvent<RoundRestartCleanupEvent>(OnReset);
@@ -71,6 +75,8 @@ public abstract partial class SharedMindSystem : EntitySystem
     private void OnMindStartup(EntityUid uid, MindComponent component, ComponentStartup args)
     {
         component.MindRoleContainer = _container.EnsureContainer<Container>(uid, MindComponent.MindRoleContainerId);
+
+        EnsureMindIdentity(uid, component);
 
         if (component.UserId == null)
             return;
@@ -96,6 +102,13 @@ public abstract partial class SharedMindSystem : EntitySystem
     private void OnReset(RoundRestartCleanupEvent ev)
     {
         WipeAllMinds();
+        _legalIdIndex.Clear();
+    }
+
+    protected virtual void OnMindShutdown(EntityUid uid, MindComponent component, ComponentShutdown args)
+    {
+        if (component.LegalID != 0 && _legalIdIndex.TryGetValue(component.LegalID, out var mappedUid) && mappedUid == uid)
+            _legalIdIndex.Remove(component.LegalID);
     }
 
     public virtual void WipeAllMinds()
@@ -129,6 +142,7 @@ public abstract partial class SharedMindSystem : EntitySystem
         if (UserMinds.TryGetValue(user, out var mindIdValue) &&
             TryComp(mindIdValue, out mind))
         {
+            EnsureMindIdentity(mindIdValue, mind);
             DebugTools.Assert(mind.UserId == user);
 
             mindId = mindIdValue;
@@ -181,6 +195,7 @@ public abstract partial class SharedMindSystem : EntitySystem
 
     private void OnRenamed(Entity<MindComponent> ent, ref EntityRenamedEvent args)
     {
+        ent.Comp.CustomName = args.NewName;
         ent.Comp.CharacterName = args.NewName;
         Dirty(ent);
     }
@@ -201,10 +216,156 @@ public abstract partial class SharedMindSystem : EntitySystem
         var mindId = Spawn(_mindProto, MapCoordinates.Nullspace);
         _metadata.SetEntityName(mindId, name == null ? "mind" : $"mind ({name})");
         var mind = EnsureComp<MindComponent>(mindId);
-        mind.CharacterName = name;
+        EnsureMindIdentity(mindId, mind, name);
         SetUserId(mindId, userId, mind);
 
         return (mindId, mind);
+    }
+
+    public bool TryGetMindByLegalID(int legalID, [NotNullWhen(true)] out EntityUid? mindId, [NotNullWhen(true)] out MindComponent? mind)
+    {
+        if (_legalIdIndex.TryGetValue(legalID, out var indexedMind) && TryComp(indexedMind, out mind))
+        {
+            mindId = indexedMind;
+            return true;
+        }
+
+        mindId = null;
+        mind = null;
+        return false;
+    }
+
+    public bool TryGetLegalID(EntityUid uid, out int legalID)
+    {
+        legalID = 0;
+        EntityUid? mindUid = null;
+
+        if (!TryComp(uid, out MindComponent? mind))
+        {
+            var mindEntity = GetMind(uid);
+            if (mindEntity == null || !TryComp(mindEntity.Value, out mind))
+                return false;
+
+            mindUid = mindEntity.Value;
+        }
+        else
+        {
+            mindUid = uid;
+        }
+
+        if (mind == null)
+            return false;
+
+        EnsureMindIdentity(mindUid.Value, mind);
+
+        legalID = mind.LegalID;
+        return legalID > 0;
+    }
+
+    public void TransferMindIdentity(EntityUid fromMind, EntityUid toMind)
+    {
+        if (!TryComp(fromMind, out MindComponent? sourceMind) || !TryComp(toMind, out MindComponent? targetMind))
+            return;
+
+        if (sourceMind.LegalID > 0 && _legalIdIndex.TryGetValue(sourceMind.LegalID, out var mappedUid) && mappedUid == fromMind)
+            _legalIdIndex.Remove(sourceMind.LegalID);
+
+        targetMind.LegalID = sourceMind.LegalID;
+        targetMind.RealName = sourceMind.RealName;
+        targetMind.CustomName = sourceMind.CustomName;
+        targetMind.CharacterName = sourceMind.CharacterName;
+
+        if (targetMind.LegalID > 0)
+            _legalIdIndex[targetMind.LegalID] = toMind;
+
+        sourceMind.LegalID = 0;
+
+        Dirty(fromMind, sourceMind);
+        Dirty(toMind, targetMind);
+    }
+
+    public void ApplyMindIdentity(EntityUid mindId, int? legalID, string? realName, string? customName, MindComponent? mind = null)
+    {
+        if (!Resolve(mindId, ref mind))
+            return;
+
+        var changed = false;
+
+        if (legalID is { } targetLegalId && targetLegalId > 0 && mind.LegalID != targetLegalId)
+        {
+            if (mind.LegalID > 0 && _legalIdIndex.TryGetValue(mind.LegalID, out var mappedUid) && mappedUid == mindId)
+                _legalIdIndex.Remove(mind.LegalID);
+
+            mind.LegalID = targetLegalId;
+            changed = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(realName) && mind.RealName != realName)
+        {
+            mind.RealName = realName;
+            changed = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(customName) && mind.CustomName != customName)
+        {
+            mind.CustomName = customName;
+            changed = true;
+        }
+
+        EnsureMindIdentity(mindId, mind, realName ?? customName);
+
+        if (changed)
+            Dirty(mindId, mind);
+    }
+
+    protected void EnsureMindIdentity(EntityUid uid, MindComponent mind, string? initialName = null)
+    {
+        var changed = false;
+
+        if (mind.LegalID > 0 && _legalIdIndex.TryGetValue(mind.LegalID, out var otherMind) && otherMind != uid)
+        {
+            // Reclaim stale mappings from detached minds so persisted identities survive reloads.
+            if (!TryComp(otherMind, out MindComponent? otherMindComp)
+                || (otherMindComp.UserId == null && otherMindComp.OwnedEntity == null))
+            {
+                _legalIdIndex.Remove(mind.LegalID);
+            }
+        }
+
+        if (mind.LegalID <= 0 || (_legalIdIndex.TryGetValue(mind.LegalID, out var remappedMind) && remappedMind != uid))
+        {
+            do
+            {
+                mind.LegalID = _random.Next(LegalIdMin, LegalIdMaxExclusive);
+            }
+            while (_legalIdIndex.ContainsKey(mind.LegalID));
+
+            changed = true;
+        }
+
+        _legalIdIndex[mind.LegalID] = uid;
+
+        var canonicalName = mind.RealName ?? mind.CustomName ?? mind.CharacterName ?? initialName;
+        if (mind.RealName != canonicalName)
+        {
+            mind.RealName = canonicalName;
+            changed = true;
+        }
+
+        if (mind.CustomName != canonicalName)
+        {
+            mind.CustomName = canonicalName;
+            changed = true;
+        }
+
+        if (mind.CharacterName != canonicalName)
+        {
+            mind.CharacterName = canonicalName;
+            changed = true;
+        }
+
+        if (changed)
+            Dirty(uid, mind);
     }
 
     /// <summary>

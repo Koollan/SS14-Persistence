@@ -28,9 +28,18 @@ public sealed partial class CryostorageContainedComponent : Component
     /// <summary>
     /// The cryostorage this entity is 'stored' in.
     /// </summary>
-    [DataField, AutoNetworkedField]
+    [ViewVariables(VVAccess.ReadWrite)]
     public EntityUid? Cryostorage;
 
     [DataField]
     public NetUserId? UserId;
+
+    [DataField]
+    public int StoredLegalID;
+
+    [DataField]
+    public string? StoredRealName;
+
+    [DataField]
+    public string? StoredCustomName;
 }

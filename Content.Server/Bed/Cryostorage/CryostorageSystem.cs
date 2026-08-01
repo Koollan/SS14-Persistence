@@ -5,6 +5,7 @@ using Content.Server.Ghost;
 using Content.Server.Hands.Systems;
 using Content.Server.Inventory;
 using Content.Server.Popups;
+using Content.Server.Access.Systems;
 using Content.Server.Station.Systems;
 using Content.Server.StationRecords.Systems;
 using Content.Shared.Access.Systems;
@@ -13,6 +14,8 @@ using Content.Shared.Chat;
 using Content.Shared.Climbing.Systems;
 using Content.Shared.Database;
 using Content.Shared.GameTicking;
+using Content.Shared.CrewAssignments.Components;
+using Content.Shared.Mind;
 using Content.Shared.Hands.Components;
 using Content.Shared.Mind.Components;
 using Content.Shared.StationRecords;
@@ -50,6 +53,7 @@ public sealed class CryostorageSystem : SharedCryostorageSystem
     [Dependency] private readonly UserInterfaceSystem _ui = default!;
     [Dependency] private readonly MapLoaderSystem _loader = default!;
     [Dependency] private readonly GameTicker _ticker = default!;
+    [Dependency] private readonly IdCardSystem _idCard = default!;
     /// <inheritdoc/>
     public override void Initialize()
     {
@@ -133,7 +137,7 @@ public sealed class CryostorageSystem : SharedCryostorageSystem
     {
         var comp = ent.Comp;
 
-        if (!TryComp<CryostorageComponent>(comp.Cryostorage, out var cryostorageComponent))
+        if (!TryGetCryostorage(ent, out var cryostorage) || !TryComp<CryostorageComponent>(cryostorage, out var cryostorageComponent))
             return;
 
         if (comp.GracePeriodEndTime != null)
@@ -153,7 +157,9 @@ public sealed class CryostorageSystem : SharedCryostorageSystem
         if (args.NewStatus is SessionStatus.Disconnected or SessionStatus.Zombie)
         {
             containedComponent.AllowReEnteringBody = true;
-            var delay = CompOrNull<CryostorageComponent>(containedComponent.Cryostorage)?.NoMindGracePeriod ?? TimeSpan.Zero;
+            var delay = TryGetCryostorage((entity, containedComponent), out var cryostorage) && TryComp<CryostorageComponent>(cryostorage, out var cryostorageComponent)
+                ? cryostorageComponent.NoMindGracePeriod
+                : TimeSpan.Zero;
             containedComponent.GracePeriodEndTime = Timing.CurTime + delay;
             containedComponent.UserId = args.Session.UserId;
         }
@@ -167,19 +173,47 @@ public sealed class CryostorageSystem : SharedCryostorageSystem
     {
         var comp = ent.Comp;
         var cryostorageEnt = ent.Comp.Cryostorage;
+        ICommonSession? playerSession = null;
+        if (userId != null)
+            _playerManager.TryGetSessionById(userId.Value, out playerSession);
 
         var station = _station.GetOwningStation(ent);
         var name = Name(ent.Owner);
 
-        if (!TryComp<CryostorageComponent>(cryostorageEnt, out var cryostorageComponent))
+        if (cryostorageEnt == null || !TryComp<CryostorageComponent>(cryostorageEnt, out var cryostorageComponent))
             return;
+
+        if (Mind.TryGetMind(ent.Owner, out var mindId, out var mind))
+        {
+            if (mind.LegalID > 0)
+            {
+                _idCard.UpdateIDAssignment(mind.LegalID, 0);
+            }
+            else
+            {
+                _idCard.UpdateIDAssignment(name, 0);
+            }
+
+            comp.StoredLegalID = mind.LegalID;
+            comp.StoredRealName = mind.RealName;
+            comp.StoredCustomName = mind.CustomName;
+            Dirty(ent.Owner, comp);
+            Mind.SetUserId(mindId, null, mind);
+        }
+
+        if (TryComp<JobNetComponent>(ent.Owner, out var jobNet))
+        {
+            jobNet.WorkingFor = 0;
+            jobNet.WorkedTime = TimeSpan.Zero;
+            Dirty(ent.Owner, jobNet);
+        }
 
         if (userId != null)
         {
             var saveFilePath = new ResPath($"{userId}]{name}");
             _loader.TrySaveGeneric(ent.Owner, saveFilePath, out var use);
-            if (TryComp<ActorComponent>(ent.Owner, out var actor))
-                _ticker.PlayerJoinLobby(actor.PlayerSession);
+            if (playerSession != null)
+                _ticker.PlayerJoinLobby(playerSession);
             _transform.DetachEntity(ent, Transform(ent));
             QueueDel(ent.Owner);
         }
@@ -187,8 +221,8 @@ public sealed class CryostorageSystem : SharedCryostorageSystem
         {
             var saveFilePath = new ResPath($"NPC]{name}");
             _loader.TrySaveGeneric(ent.Owner, saveFilePath, out var use);
-            if (TryComp<ActorComponent>(ent.Owner, out var actor))
-                _ticker.PlayerJoinLobby(actor.PlayerSession);
+            if (playerSession != null)
+                _ticker.PlayerJoinLobby(playerSession);
             _transform.DetachEntity(ent, Transform(ent));
             QueueDel(ent.Owner);
         }
@@ -238,7 +272,7 @@ public sealed class CryostorageSystem : SharedCryostorageSystem
             return;
 
         // how did you destroy these? they're indestructible.
-        if (comp.Cryostorage is not { } cryostorage ||
+        if (!TryGetCryostorage(entity, out var cryostorage) ||
             TerminatingOrDeleted(cryostorage) ||
             !TryComp<CryostorageComponent>(cryostorage, out var cryostorageComponent))
         {

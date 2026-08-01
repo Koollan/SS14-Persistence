@@ -63,6 +63,7 @@ public sealed partial class JobNetSystem
     public (string? jobTitle, string? factionName) GetJobNetStrings(EntityUid? user)
     {
         if (!TryComp<ImplantedComponent>(user, out var implanted)) return (null, null);
+        if (user == null || !_mind.TryGetLegalID(user.Value, out var legalID)) return (null, null);
 
         EntityUid? jobNet = null;
         JobNetComponent? component = null;
@@ -85,7 +86,7 @@ public sealed partial class JobNetSystem
         foreach (var station in stations)
         {
             if (!TryComp<CrewRecordsComponent>(station, out var crewRecord)
-                || (!crewRecord.TryGetRecord(Name(user.Value), out var record)
+                || (!crewRecord.TryGetRecord(legalID, out var record)
                 || record == null)
                 || !TryComp<StationDataComponent>(station, out var stationData)
                 || stationData.StationName == null
@@ -112,6 +113,8 @@ public sealed partial class JobNetSystem
     {
         if (!Resolve(jobnet, ref component) || user == null || component == null)
             return;
+        if (!_mind.TryGetLegalID(user.Value, out var legalID))
+            return;
 
         Dictionary<int, string> possibleStations = new Dictionary<int, string>();
         var stations = _station.GetStationsSet();
@@ -128,7 +131,7 @@ public sealed partial class JobNetSystem
         {
             if (TryComp<CrewRecordsComponent>(station, out var crewRecord) && crewRecord != null)
             {
-                if (crewRecord.TryGetRecord(Name(user.Value), out var record) && record != null)
+                if (crewRecord.TryGetRecord(legalID, out var record) && record != null)
                 {
                     if (TryComp<StationDataComponent>(station, out var stationData))
                     {
@@ -178,7 +181,7 @@ public sealed partial class JobNetSystem
             completedObjectives = _meta.MetaRecords.CompletedObjectives;
             currentObjectives = _meta.MetaRecords.CurrentObjectives;
             codexEntries = _meta.MetaRecords.CodexEntries;
-            if (_meta.MetaRecords.TryGetRecord(Name(user.Value), out var record) && record != null)
+            if (_meta.MetaRecords.TryGetRecord(legalID, out var record) && record != null)
             {
                 currentLevel = record.Level;
             }

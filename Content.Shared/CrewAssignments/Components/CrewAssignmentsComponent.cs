@@ -1,4 +1,6 @@
+using Content.Shared.StatusIcon;
 using Robust.Shared.GameStates;
+using Robust.Shared.Prototypes;
 
 namespace Content.Shared.CrewAssignments.Components;
 
@@ -61,6 +63,8 @@ public partial class CrewAssignment
     public bool CanClaim = false;
     [DataField("_spendingLimit")]
     public int SpendingLimit = 0;
+    [DataField]
+    public ProtoId<JobIconPrototype> JobIcon = "JobIconPassenger";
     [DataField("_canEditGeneralRecord")]
     public bool CanEditGeneralRecord = false;
 

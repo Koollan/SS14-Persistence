@@ -6,7 +6,13 @@ using Content.Shared.CrewAccesses.Components;
 using Content.Shared.CrewAssignments.Components;
 using Content.Shared.CrewAssignments.Events;
 using Content.Shared.CrewAssignments.Systems;
+using Content.Shared.Radio;
 using Content.Shared.Station.Components;
+using Content.Shared.StatusIcon;
+using Robust.Shared.Maths;
+using Robust.Shared.Prototypes;
+using System;
+using System.Linq;
 
 namespace Content.Server.CrewAssignments.Systems;
 
@@ -29,12 +35,15 @@ public sealed partial class CrewAssignmentSystem
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationToggleChannelAccess>(OnToggleChannelAccess);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationEnableChannel>(OnEnableChannel);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationDisableChannel>(OnDisableChannel);
+        SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationCreateChannel>(OnCreateChannel);
+        SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationEditChannel>(OnEditChannel);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationToggleClaim>(OnToggleClaim);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationToggleGenRec>(OnToggleGenRec);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationToggleAssign>(OnToggleAssign);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationChangeAssignmentCLevel>(OnChangeCLevel);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationChangeAssignmentWage>(OnChangeWage);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationChangeAssignmentName>(OnChangeAName);
+        SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationChangeAssignmentJobIcon>(OnChangeJobIcon);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationChangeAssignmentSpendingLimit>(OnChangeSpendingLimit);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationDeleteAssignment>(OnDeleteAssignment);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationDefaultAccess>(OnDefaultAccess);
@@ -167,6 +176,39 @@ public sealed partial class CrewAssignmentSystem
         Dirty((EntityUid)station, crewAssignments);
         UpdateOrders(station.Value);
 
+    }
+
+    private void OnChangeJobIcon(EntityUid uid, StationModificationConsoleComponent component, StationModificationChangeAssignmentJobIcon args)
+    {
+        if (args.Actor is not { Valid: true } player)
+            return;
+
+        var station = _station.GetOwningStation(uid);
+        if (station == null) return;
+
+        if (!Validate(uid, component, player, out var stationData)) return;
+        if (!TryComp(station, out CrewAssignmentsComponent? crewAssignments))
+        {
+            ConsolePopup(player, "No CrewAssignment Component!");
+            return;
+        }
+
+        if (!crewAssignments.CrewAssignments.TryGetValue(args.AccessID, out var crewAssignment))
+        {
+            ConsolePopup(player, "Invalid Assignment!");
+            return;
+        }
+
+        if (!_protoMan.TryIndex(args.JobIcon, out JobIconPrototype? jobIcon) || !jobIcon.AllowSelection)
+        {
+            ConsolePopup(player, "Invalid Job Icon!");
+            return;
+        }
+
+        crewAssignment.JobIcon = args.JobIcon;
+        Dirty((EntityUid)station, crewAssignments);
+        _idCard.RebuildAssignmentIds(station.Value, args.AccessID);
+        UpdateOrders(station.Value);
     }
     private void OnCreateAssignment(EntityUid uid, StationModificationConsoleComponent component, StationModificationCreateAssignment args)
     {
@@ -535,6 +577,204 @@ public sealed partial class CrewAssignmentSystem
             }
         }
         Dirty((EntityUid)station, crewAssignments);
+        UpdateOrders(station.Value);
+    }
+
+    private static readonly ProtoId<RadioChannelPrototype>[] CustomChannelPool =
+    {
+        "FactionCustom1",
+        "FactionCustom2",
+        "FactionCustom3",
+        "FactionCustom4",
+        "FactionCustom5",
+        "FactionCustom6",
+    };
+
+    private static (byte red, byte green, byte blue) ClampBrightCustomColor(int red, int green, int blue)
+    {
+        var inputSrgb = new Color(
+            (byte)Math.Clamp(red, 0, 255),
+            (byte)Math.Clamp(green, 0, 255),
+            (byte)Math.Clamp(blue, 0, 255));
+
+        var lab = Color.ToLab(Color.FromSrgb(inputSrgb));
+        lab.X = Math.Clamp(lab.X, 0.62f, 0.92f);
+
+        var clippedLinear = Color.FromLab(lab);
+        clippedLinear = new Color
+        {
+            R = Math.Clamp(clippedLinear.R, 0f, 1f),
+            G = Math.Clamp(clippedLinear.G, 0f, 1f),
+            B = Math.Clamp(clippedLinear.B, 0f, 1f),
+            A = 1f,
+        };
+
+        var outputSrgb = Color.ToSrgb(clippedLinear);
+        return (outputSrgb.RByte, outputSrgb.GByte, outputSrgb.BByte);
+    }
+
+    private void OnCreateChannel(EntityUid uid, StationModificationConsoleComponent component, StationModificationCreateChannel args)
+    {
+        if (args.Actor is not { Valid: true } player)
+            return;
+
+        var station = _station.GetOwningStation(uid);
+        if (station == null)
+            return;
+
+        if (!Validate(uid, component, player, out _))
+            return;
+
+        if (!TryComp<StationDataComponent>(station, out var stationData))
+        {
+            ConsolePopup(player, "No Station Data Component!");
+            return;
+        }
+
+        var name = args.Name.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            ConsolePopup(player, "Channel name is required.");
+            return;
+        }
+
+        if (name.Length > 24)
+            name = name[..24];
+
+        if (stationData.RadioData.Values.Any(data => data.IsCustom && string.Equals(data.CustomName, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            ConsolePopup(player, "A custom channel with that name already exists.");
+            return;
+        }
+
+        var hotkeyText = args.Hotkey?.Trim() ?? string.Empty;
+        if (hotkeyText.Length != 1)
+        {
+            ConsolePopup(player, "Hotkey must be exactly one character.");
+            return;
+        }
+
+        var hotkey = char.ToLowerInvariant(hotkeyText[0]);
+        if (char.IsWhiteSpace(hotkey) || hotkey is ';' or ':' or '/' or '\\' or '[' or ']' or '>' or ',' or '@' or '*')
+        {
+            ConsolePopup(player, "Invalid hotkey character.");
+            return;
+        }
+
+        if (stationData.RadioData.Values.Any(data => data.IsCustom && char.ToLowerInvariant(data.Hotkey) == hotkey))
+        {
+            ConsolePopup(player, "That hotkey is already in use by another custom channel.");
+            return;
+        }
+
+        ProtoId<RadioChannelPrototype>? selectedChannel = null;
+        foreach (var channel in CustomChannelPool)
+        {
+            if (!stationData.RadioData.ContainsKey(channel))
+            {
+                selectedChannel = channel;
+                break;
+            }
+        }
+
+        if (selectedChannel == null)
+        {
+            ConsolePopup(player, "Custom channel limit reached.");
+            return;
+        }
+
+        var (red, green, blue) = ClampBrightCustomColor(args.Red, args.Green, args.Blue);
+
+        stationData.RadioData[selectedChannel.Value] = new FactionRadioData(true)
+        {
+            IsCustom = true,
+            CustomName = name,
+            Hotkey = hotkey,
+            ColorR = red,
+            ColorG = green,
+            ColorB = blue,
+        };
+
+        Dirty(station.Value, stationData);
+        UpdateOrders(station.Value);
+    }
+
+    private void OnEditChannel(EntityUid uid, StationModificationConsoleComponent component, StationModificationEditChannel args)
+    {
+        if (args.Actor is not { Valid: true } player)
+            return;
+
+        var station = _station.GetOwningStation(uid);
+        if (station == null)
+            return;
+
+        if (!Validate(uid, component, player, out _))
+            return;
+
+        if (!TryComp<StationDataComponent>(station, out var stationData))
+        {
+            ConsolePopup(player, "No Station Data Component!");
+            return;
+        }
+
+        if (!stationData.RadioData.TryGetValue(args.ChannelID, out var existing))
+        {
+            ConsolePopup(player, "Invalid Channel!");
+            return;
+        }
+
+        if (!existing.IsCustom)
+        {
+            ConsolePopup(player, "Only custom channels can be edited.");
+            return;
+        }
+
+        var name = args.Name.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            ConsolePopup(player, "Channel name is required.");
+            return;
+        }
+
+        if (name.Length > 24)
+            name = name[..24];
+
+        if (stationData.RadioData.Any(pair => pair.Key != args.ChannelID && pair.Value.IsCustom &&
+                                              string.Equals(pair.Value.CustomName, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            ConsolePopup(player, "A custom channel with that name already exists.");
+            return;
+        }
+
+        var hotkeyText = args.Hotkey?.Trim() ?? string.Empty;
+        if (hotkeyText.Length != 1)
+        {
+            ConsolePopup(player, "Hotkey must be exactly one character.");
+            return;
+        }
+
+        var hotkey = char.ToLowerInvariant(hotkeyText[0]);
+        if (char.IsWhiteSpace(hotkey) || hotkey is ';' or ':' or '/' or '\\' or '[' or ']' or '>' or ',' or '@' or '*')
+        {
+            ConsolePopup(player, "Invalid hotkey character.");
+            return;
+        }
+
+        if (stationData.RadioData.Any(pair => pair.Key != args.ChannelID && pair.Value.IsCustom && char.ToLowerInvariant(pair.Value.Hotkey) == hotkey))
+        {
+            ConsolePopup(player, "That hotkey is already in use by another custom channel.");
+            return;
+        }
+
+        var (newRed, newGreen, newBlue) = ClampBrightCustomColor(args.Red, args.Green, args.Blue);
+
+        existing.CustomName = name;
+        existing.Hotkey = hotkey;
+        existing.ColorR = newRed;
+        existing.ColorG = newGreen;
+        existing.ColorB = newBlue;
+
+        Dirty(station.Value, stationData);
         UpdateOrders(station.Value);
     }
     private void OnToggleAssign(EntityUid uid, StationModificationConsoleComponent component, StationModificationToggleAssign args)

@@ -13,7 +13,11 @@ using Content.Shared.CrewAssignments.Components;
 using Content.Shared.CrewRecords.Components;
 using Content.Shared.Database;
 using Content.Shared.Kitchen;
+using Content.Shared.PDA;
+using Content.Shared.Station.Components;
 using Content.Shared.Popups;
+using Content.Shared.StatusIcon;
+using Content.Shared.StatusIcon.Components;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Random;
 using System.Linq;
@@ -30,6 +34,9 @@ public sealed class IdCardSystem : SharedIdCardSystem
     [Dependency] private readonly MicrowaveSystem _microwave = default!;
     [Dependency] private readonly CrewMetaRecordsSystem _crewMeta = default!;
     [Dependency] private readonly StationSystem _station = default!;
+    [Dependency] private readonly SharedJobStatusSystem _jobStatus = default!;
+
+    private static readonly ProtoId<JobIconPrototype> OffDutyIcon = "JobIconNoId";
 
     public override void Initialize()
     {
@@ -41,6 +48,14 @@ public sealed class IdCardSystem : SharedIdCardSystem
 
     private void OnCompInit(EntityUid uid, IdCardComponent id, ComponentInit args)
     {
+        if (id.LegalID <= 0 && _crewMeta.MetaRecords != null && !string.IsNullOrWhiteSpace(id.FullName))
+        {
+            if (_crewMeta.MetaRecords.TryGetRecord(id.FullName, out var legalRecord) && legalRecord != null && legalRecord.LegalID > 0)
+            {
+                id.LegalID = legalRecord.LegalID;
+            }
+        }
+
         if (id.CreatedTime == null)
         {
             id.CreatedTime = DateTime.Now;
@@ -148,6 +163,22 @@ public sealed class IdCardSystem : SharedIdCardSystem
         }
     }
 
+    public void ExpireAllIds(int legalID)
+    {
+        if (legalID <= 0)
+            return;
+
+        var query = EntityQueryEnumerator<IdCardComponent>();
+        while (query.MoveNext(out var uid, out var comp))
+        {
+            if (comp.LegalID != legalID)
+                continue;
+
+            if (comp.CreatedTime < DateTime.Now)
+                QueueDel(uid);
+        }
+    }
+
     public void UpdateIDAssignment(string name, int station)
     {
         var query = EntityQueryEnumerator<IdCardComponent>();
@@ -160,6 +191,21 @@ public sealed class IdCardSystem : SharedIdCardSystem
                 UpdateEntityName(uid, comp);
             }
 
+        }
+    }
+
+    public void UpdateIDAssignment(int legalID, int station)
+    {
+        var query = EntityQueryEnumerator<IdCardComponent>();
+        while (query.MoveNext(out var uid, out var comp))
+        {
+            if (comp.LegalID != legalID)
+                continue;
+
+            comp.LegalID = legalID;
+            comp.stationID = station;
+            RebuildJob(uid, comp);
+            UpdateEntityName(uid, comp);
         }
     }
 
@@ -191,30 +237,51 @@ public sealed class IdCardSystem : SharedIdCardSystem
         }
     }
 
+    public void BuildID(EntityUid card, int legalID, string name)
+    {
+        if (TryComp<IdCardComponent>(card, out var comp))
+        {
+            comp.LegalID = legalID;
+            comp.FullName = name;
+            RebuildJob(card, comp);
+            UpdateEntityName(card, comp);
+        }
+    }
+
     public void RebuildJob(EntityUid card, IdCardComponent comp)
     {
         if (comp.FullName == null || comp.stationID == null)
         {
             comp.LocalizedJobTitle = "Off Duty";
+            comp.JobIcon = OffDutyIcon;
+            Dirty(card, comp);
+            UpdateHolderJobStatus(card);
             return;
         }
+
         var station = _station.GetStationByID(comp.stationID.Value);
         if (station == null)
         {
             comp.LocalizedJobTitle = "Off Duty";
+            comp.JobIcon = OffDutyIcon;
+            Dirty(card, comp);
+            UpdateHolderJobStatus(card);
             return;
         }
+
         bool found = false;
 
         if (TryComp<CrewRecordsComponent>(station, out var crewRecords))
         {
-            if (crewRecords.TryGetRecord(comp.FullName, out var crewRecord) && crewRecord != null)
+            if ((comp.LegalID > 0 && crewRecords.TryGetRecord(comp.LegalID, out var crewRecord) && crewRecord != null)
+                || crewRecords.TryGetRecord(comp.FullName, out crewRecord) && crewRecord != null)
             {
                 if (TryComp<CrewAssignmentsComponent>(station, out var crewAssignments))
                 {
                     if (crewAssignments.TryGetAssignment(crewRecord.AssignmentID, out var crewAssignment) && crewAssignment != null)
                     {
                         comp.LocalizedJobTitle = crewAssignment.Name;
+                        comp.JobIcon = crewAssignment.JobIcon;
                         found = true;
                     }
                 }
@@ -223,7 +290,81 @@ public sealed class IdCardSystem : SharedIdCardSystem
         if (!found)
         {
             comp.LocalizedJobTitle = "Off Duty";
+            comp.JobIcon = OffDutyIcon;
+        }
+
+        Dirty(card, comp);
+        UpdateHolderJobStatus(card);
+    }
+
+    public void RebuildAssignmentIds(EntityUid stationUid, int assignmentId)
+    {
+        var stationId = _station.GetStationID(stationUid);
+        if (stationId == 0)
+            return;
+
+        var stationDataId = 0;
+        if (TryComp<StationDataComponent>(stationUid, out var stationData))
+            stationDataId = stationData.UID;
+
+        if (!TryComp<CrewRecordsComponent>(stationUid, out var crewRecords))
+            return;
+
+        var rebuiltAny = false;
+        var query = EntityQueryEnumerator<IdCardComponent>();
+        while (query.MoveNext(out var uid, out var card))
+        {
+            // Cards can store either StationSystem station IDs or StationData UIDs depending on source.
+            if (card.stationID is > 0
+                && card.stationID != stationId
+                && (stationDataId == 0 || card.stationID != stationDataId))
+                continue;
+
+            CrewRecord? record = null;
+            if (card.LegalID > 0)
+                crewRecords.TryGetRecord(card.LegalID, out record);
+
+            if (record == null && !string.IsNullOrWhiteSpace(card.FullName))
+                crewRecords.TryGetRecord(card.FullName, out record);
+
+            if (record == null || record.AssignmentID != assignmentId)
+                continue;
+
+            if (card.stationID is null or <= 0)
+                card.stationID = stationId;
+
+            RebuildJob(uid, card);
+            UpdateEntityName(uid, card);
+            rebuiltAny = true;
+        }
+
+        if (rebuiltAny)
+            RefreshAllJobStatuses();
+    }
+
+    private void RefreshAllJobStatuses()
+    {
+        var query = EntityQueryEnumerator<JobStatusComponent>();
+        while (query.MoveNext(out var uid, out var status))
+        {
+            _jobStatus.UpdateStatus((uid, status));
+        }
+    }
+
+    private void UpdateHolderJobStatus(EntityUid card)
+    {
+        var parent = Transform(card).ParentUid;
+        if (parent == EntityUid.Invalid)
+            return;
+
+        if (HasComp<PdaComponent>(parent))
+        {
+            var holder = Transform(parent).ParentUid;
+            if (holder != EntityUid.Invalid)
+                _jobStatus.UpdateStatus((holder, null));
             return;
         }
+
+        _jobStatus.UpdateStatus((parent, null));
     }
 }

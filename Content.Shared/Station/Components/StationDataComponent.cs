@@ -1,6 +1,7 @@
 using Content.Shared.CrewAssignments.Prototypes;
 using Content.Shared.Radio;
 using Robust.Shared.GameStates;
+using Robust.Shared.Maths;
 using Robust.Shared.Prototypes;
 
 namespace Content.Shared.Station.Components;
@@ -92,9 +93,32 @@ public partial class FactionRadioData
     [DataField("_access")]
     public List<string> Access = new();
 
+    [DataField]
+    public bool IsCustom = false;
+
+    [DataField]
+    public string? CustomName;
+
+    [DataField]
+    public char Hotkey = '\0';
+
+    [DataField]
+    public byte ColorR = 44;
+
+    [DataField]
+    public byte ColorG = 219;
+
+    [DataField]
+    public byte ColorB = 44;
+
 
     public FactionRadioData(bool enabled = false)
     {
         Enabled = enabled;
+    }
+
+    public Color GetColor()
+    {
+        return Color.FromSrgb(new Color(ColorR, ColorG, ColorB));
     }
 }

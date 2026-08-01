@@ -29,11 +29,12 @@ public sealed class MindSystem : SharedMindSystem
         base.Initialize();
 
         SubscribeLocalEvent<MindContainerComponent, EntityTerminatingEvent>(OnMindContainerTerminating);
-        SubscribeLocalEvent<MindComponent, ComponentShutdown>(OnMindShutdown);
     }
 
-    private void OnMindShutdown(EntityUid uid, MindComponent mind, ComponentShutdown args)
+    protected override void OnMindShutdown(EntityUid uid, MindComponent mind, ComponentShutdown args)
     {
+        base.OnMindShutdown(uid, mind, args);
+
         if (mind.UserId is { } user)
         {
             UserMinds.Remove(user);
@@ -172,6 +173,8 @@ public sealed class MindSystem : SharedMindSystem
     {
         if (mind == null && !Resolve(mindId, ref mind))
             return;
+
+        EnsureMindIdentity(mindId, mind, entity is { Valid: true } target ? Name(target) : null);
 
         if (entity == mind.OwnedEntity)
             return;

@@ -14,6 +14,10 @@ public sealed partial class IdCardComponent : Component
 {
     [DataField]
     [AutoNetworkedField]
+    public int LegalID;
+
+    [DataField]
+    [AutoNetworkedField]
     // FIXME Friends
     public string? FullName;
 

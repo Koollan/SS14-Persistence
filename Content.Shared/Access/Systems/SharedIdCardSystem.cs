@@ -2,6 +2,7 @@ using Content.Shared.Access.Components;
 using Content.Shared.Administration.Logs;
 using Content.Shared.CCVar;
 using Content.Shared.Database;
+using Content.Shared.Examine;
 using Content.Shared.Hands.EntitySystems;
 using Content.Shared.IdentityManagement;
 using Content.Shared.Inventory;
@@ -37,6 +38,7 @@ public abstract class SharedIdCardSystem : EntitySystem
 
         SubscribeLocalEvent<IdCardComponent, MapInitEvent>(OnMapInit);
         SubscribeLocalEvent<IdCardComponent, AfterAutoHandleStateEvent>(OnHandleState);
+        SubscribeLocalEvent<IdCardComponent, ExaminedEvent>(OnExamined);
         SubscribeLocalEvent<TryGetIdentityShortInfoEvent>(OnTryGetIdentityShortInfo);
         SubscribeLocalEvent<EntityRenamedEvent>(OnRename);
 
@@ -61,6 +63,7 @@ public abstract class SharedIdCardSystem : EntitySystem
     private void OnMapInit(EntityUid uid, IdCardComponent id, MapInitEvent args)
     {
         UpdateEntityName(uid, id);
+        OnIdCardUpdated((uid, id));
     }
 
     private void OnTryGetIdentityShortInfo(TryGetIdentityShortInfoEvent ev)
@@ -87,6 +90,23 @@ public abstract class SharedIdCardSystem : EntitySystem
             _jobStatus.UpdateStatus(Transform(Transform(ent).ParentUid).ParentUid); //ID is inside a PDA
         else
             _jobStatus.UpdateStatus(Transform(ent).ParentUid); //ID is held/directly in the ID slot
+
+        OnIdCardUpdated(ent);
+    }
+
+    /// <summary>
+    /// Hook for platform-specific ID-card behavior after map initialization and network state updates.
+    /// </summary>
+    protected virtual void OnIdCardUpdated(Entity<IdCardComponent> ent)
+    {
+    }
+
+    private void OnExamined(Entity<IdCardComponent> ent, ref ExaminedEvent args)
+    {
+        if (ent.Comp.LegalID <= 0)
+            return;
+
+        args.PushMarkup(Loc.GetString("access-id-card-component-owner-legal-id", ("id", ent.Comp.LegalID)));
     }
 
     /// <summary>
