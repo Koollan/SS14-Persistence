@@ -230,8 +230,6 @@ public sealed class RadioSystem : EntitySystem
                     continue;
             }
 
-
-
             if (!channel.LongRange && transform.MapID != sourceMapId && !radio.GlobalReceive)
                 continue;
 

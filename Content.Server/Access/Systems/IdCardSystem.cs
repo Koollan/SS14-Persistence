@@ -18,6 +18,7 @@ using Content.Shared.Station.Components;
 using Content.Shared.Popups;
 using Content.Shared.StatusIcon;
 using Content.Shared.StatusIcon.Components;
+using Content.Shared.Station.Components;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Random;
 using System.Linq;
@@ -43,10 +44,10 @@ public sealed class IdCardSystem : SharedIdCardSystem
         base.Initialize();
 
         SubscribeLocalEvent<IdCardComponent, BeingMicrowavedEvent>(OnMicrowaved);
-        SubscribeLocalEvent<IdCardComponent, ComponentInit>(OnCompInit);
+        SubscribeLocalEvent<IdCardComponent, ComponentStartup>(OnCompInit);
     }
 
-    private void OnCompInit(EntityUid uid, IdCardComponent id, ComponentInit args)
+    private void OnCompInit(EntityUid uid, IdCardComponent id, ComponentStartup args)
     {
         if (id.LegalID <= 0 && _crewMeta.MetaRecords != null && !string.IsNullOrWhiteSpace(id.FullName))
         {
@@ -195,6 +196,7 @@ public sealed class IdCardSystem : SharedIdCardSystem
     }
 
     public void UpdateIDAssignment(int legalID, int station)
+    public void RefreshStationIds(int stationId)
     {
         var query = EntityQueryEnumerator<IdCardComponent>();
         while (query.MoveNext(out var uid, out var comp))
@@ -206,6 +208,12 @@ public sealed class IdCardSystem : SharedIdCardSystem
             comp.stationID = station;
             RebuildJob(uid, comp);
             UpdateEntityName(uid, comp);
+            if (comp.stationID != stationId)
+                continue;
+
+            RebuildJob(uid, comp);
+            UpdateEntityName(uid, comp);
+            Dirty(uid, comp);
         }
     }
 
@@ -282,6 +290,15 @@ public sealed class IdCardSystem : SharedIdCardSystem
                     {
                         comp.LocalizedJobTitle = crewAssignment.Name;
                         comp.JobIcon = crewAssignment.JobIcon;
+                        // IDs show assignment as "[TAG] Job" so players can quickly identify
+                        // which faction the card holder currently works for.
+                        var factionTag = string.Empty;
+                        if (TryComp<StationDataComponent>(station, out var stationData))
+                            factionTag = stationData.GetResolvedFactionTag(MetaData(station.Value).EntityName);
+
+                        comp.LocalizedJobTitle = string.IsNullOrEmpty(factionTag)
+                            ? crewAssignment.Name
+                            : $"[{factionTag}] {crewAssignment.Name}";
                         found = true;
                     }
                 }
