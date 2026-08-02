@@ -189,9 +189,21 @@ public sealed class CryostorageSystem : SharedCryostorageSystem
             {
                 _idCard.UpdateIDAssignment(mind.LegalID, 0);
             }
-            else
+
+            // Backward-compatibility for cards that still resolve by names rather than LegalID.
+            if (!string.IsNullOrWhiteSpace(name))
             {
                 _idCard.UpdateIDAssignment(name, 0);
+            }
+
+            if (!string.IsNullOrWhiteSpace(mind.RealName) && mind.RealName != name)
+                _idCard.UpdateIDAssignment(mind.RealName, 0);
+
+            if (!string.IsNullOrWhiteSpace(mind.CustomName)
+                && mind.CustomName != name
+                && mind.CustomName != mind.RealName)
+            {
+                _idCard.UpdateIDAssignment(mind.CustomName, 0);
             }
 
             comp.StoredLegalID = mind.LegalID;
