@@ -10,15 +10,18 @@ using Content.Shared.Chat;
 using Content.Shared.Mind;
 using Content.Shared.Mobs;
 using Content.Shared.Mobs.Components;
+using Content.Shared.Mobs.Events;
 using Content.Shared.Mobs.Systems;
 using Content.Shared.Players;
 using Content.Shared.Preferences;
 using Content.Shared.Speech.Muting;
+using Content.Shared.Tag;
 using Robust.Server.Console;
 using Robust.Server.GameObjects;
 using Robust.Shared.Configuration;
 using Robust.Shared.Player;
 using Robust.Shared.Timing;
+using Robust.Shared.Prototypes;
 
 namespace Content.Server.Mobs;
 
@@ -40,7 +43,9 @@ public sealed class CritMobActionsSystem : EntitySystem
     [Dependency] private readonly RadioSystem _radio = default!;
     [Dependency] private readonly SharedTransformSystem _transform = default!;
     [Dependency] private readonly IConfigurationManager _configurationManager = default!;
+    [Dependency] private readonly TagSystem _tag = default!;
     private const int MaxLastWordsLength = 30;
+    private static readonly ProtoId<TagPrototype> NoGibTag = "NoGib";
 
     public override void Initialize()
     {
@@ -146,9 +151,15 @@ public sealed class CritMobActionsSystem : EntitySystem
     public bool ValidateSOS(EntityUid uid, MobStateActionsComponent component)
     {
         if (component.SOSCooldown > _timing.CurTime) return false;
+
+        var ev = new GetSosOverrideEvent();
+        RaiseLocalEvent(uid, ev);
+
+        // state is null entirely (not just alive) for something like a mind vessel, which has no
+        // MobStateComponent at all - that's fine as long as the override says this is allowed.
         TryComp<MobStateComponent>(uid, out var state);
-        if (state == null) return false;
-        if (state.CurrentState != MobState.Dead) return false;
+        if (state is not { CurrentState: MobState.Dead } && !ev.AllowWhileAlive) return false;
+
         return true;
     }
 
@@ -160,7 +171,13 @@ public sealed class CritMobActionsSystem : EntitySystem
         }
         var xform = Transform(uid);
         var mapPos = _transform.GetWorldPosition(xform);
-        _radio.SendRadioMessage(uid, $"{Name(uid)} has died at ({mapPos.X:F1}, {mapPos.Y:F1}) and is broadcasting an SOS.", "Common", uid, true, false);
+
+        var overrideEv = new GetSosOverrideEvent();
+        RaiseLocalEvent(uid, overrideEv);
+        var message = overrideEv.MessageOverride ?? $"{Name(uid)} has died at ({mapPos.X:F1}, {mapPos.Y:F1}) and is broadcasting an SOS.";
+
+        var speaker = overrideEv.SpeakerOverride ?? uid;
+        _radio.SendRadioMessage(speaker, message, "Common", speaker, true, false);
         var respawnTime = TimeSpan.FromSeconds(_configurationManager.GetCVar(CCVars.AcceptDeathTime));
         component.SOSCooldown = _timing.CurTime + respawnTime;
         UpdateUserInterface(uid, uid, component);
@@ -212,6 +229,8 @@ public sealed class CritMobActionsSystem : EntitySystem
                         foundSlot = pair.Key;
                     }
                 }
+
+                _tag.RemoveTag(uid, NoGibTag);
                 _prefsManager.DeleteCharacter(foundSlot, actor.PlayerSession.UserId, actor.PlayerSession);
                 _ticker.Respawn(actor.PlayerSession);
             });

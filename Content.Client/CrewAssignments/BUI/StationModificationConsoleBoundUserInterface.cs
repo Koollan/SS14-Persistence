@@ -63,6 +63,7 @@ public sealed class StationModificationConsoleBoundUserInterface : BoundUserInte
         _menu.OnOwnerPressed += RemoveOwner;
         _menu.NewOwnerConfirm.OnPressed += AddOwner;
         _menu.StationNameConfirm.OnPressed += ChangeStationName;
+        _menu.FactionTagConfirm.OnPressed += ChangeFactionTag;
         _menu.AccessCreateConfirm.OnPressed += CreateNewAccess;
         _menu.AccessDeleteConfirm.OnPressed += DeleteAccess;
         _menu.CreateAssignment.OnPressed += CreateAssignment;
@@ -106,7 +107,7 @@ public sealed class StationModificationConsoleBoundUserInterface : BoundUserInte
         Accesses = cState.CrewAccess;
         Assignments = cState.CrewAssignments;
         _menu?.UpdateOwners(owners);
-        _menu?.UpdateStation(station, cState.Name);
+        _menu?.UpdateStation(station, cState.Name, cState.FactionTag);
         _menu?.UpdateAccesses(Accesses);
         _menu?.UpdateAssignments(Assignments);
         _menu?.UpdateUpgrades(cState.Level, cState.AccountBalance);
@@ -184,6 +185,14 @@ public sealed class StationModificationConsoleBoundUserInterface : BoundUserInte
         string newName = _menu.StationNameField.Text;
         if (newName == null || newName == "") return;
         SendMessage(new StationModificationChangeName(newName));
+    }
+
+    private void ChangeFactionTag(ButtonEventArgs args)
+    {
+        if (_menu == null)
+            return;
+
+        SendMessage(new StationModificationChangeFactionTag(_menu.FactionTagField.Text));
     }
 
     private void CreateNewAccess(ButtonEventArgs args)

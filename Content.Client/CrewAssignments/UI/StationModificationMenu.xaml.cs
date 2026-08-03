@@ -50,6 +50,7 @@ namespace Content.Client.CrewAssignments.UI
         public event Action<ButtonEventArgs>? OnOwnerPressed;
         public event Action<ButtonToggledEventArgs>? OnAssignmentAccessPressed;
         public event Action<ButtonToggledEventArgs>? OnChannelAccessPressed;
+
         public StationModificationMenu(EntityUid owner, IEntityManager entMan, IPrototypeManager protoManager, SpriteSystem spriteSystem)
         {
             RobustXamlLoader.Load(this);
@@ -72,6 +73,14 @@ namespace Content.Client.CrewAssignments.UI
             ChannelColorPicker.OnColorChanged += color => UpdateColorPreview(ChannelColorPreview, color);
             OpenJobIconPicker.OnPressed += _ => OpenJobIconPickerPopup();
             PopulateJobIcons();
+            FactionTagField.OnTextChanged += _ =>
+            {
+                if (FactionTagField.Text.Length <= 4)
+                    return;
+
+                FactionTagField.Text = FactionTagField.Text[..4];
+                FactionTagField.CursorPosition = FactionTagField.Text.Length;
+            };
 
             _suppressColorCallbacks = true;
             ChannelColorPicker.Color = Color.FromSrgb(new Color(44, 219, 44));
@@ -241,12 +250,13 @@ namespace Content.Client.CrewAssignments.UI
             UpdateAssignment();
 
         }
-        public void UpdateStation(EntityUid station, string name)
+        public void UpdateStation(EntityUid station, string name, string factionTag)
         {
 
             _station = station;
             StationNameLabel.Text = name;
             StationNameField.Text = name;
+            FactionTagField.Text = factionTag;
         }
         public void UpdateOwners(List<string> owners)
         {
