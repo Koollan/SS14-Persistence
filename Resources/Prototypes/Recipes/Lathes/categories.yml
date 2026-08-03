@@ -215,8 +215,3 @@
 - type: latheCategory
   id: Bandanas
   name: lathe-category-bandanas
-
-
-- type: latheCategory
-  id: Pouches
-  name: lathe-category-pouches

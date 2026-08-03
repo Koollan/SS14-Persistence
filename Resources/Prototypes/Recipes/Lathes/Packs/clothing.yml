@@ -47,8 +47,6 @@
   - ClothingUniformJumpskirtRedStripedDress
   - ClothingShoesBootsPerformer
   - ClothingShoesBootsLaceup
-  - ClothingUniformRandomStandard
-  - ClothingUniformRandomBra
   - ClothingShoesFlippers
   - ClothingShoesLeather
   - ClothingShoesSlippers
@@ -287,7 +285,6 @@
   - ClothingHeadHatParamedicsoft
   - ClothingBeltMedical
   - ClothingNeckStethoscope
-  - ClothingUniformJumpsuitCoroner
 
 - type: latheRecipePack
   id: ClothingScience

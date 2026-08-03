@@ -36,9 +36,6 @@ public sealed partial class IFFComponent : Component
     [ViewVariables(VVAccess.ReadWrite), DataField, AutoNetworkedField]
     public Color Color = IFFColor;
 
-    [ViewVariables(VVAccess.ReadWrite), DataField, AutoNetworkedField]
-    public bool ShowFactionTag = true;
-
     public static Color NormalizeSignatureColor(Color color)
     {
         var hsv = Color.ToHsv(color);

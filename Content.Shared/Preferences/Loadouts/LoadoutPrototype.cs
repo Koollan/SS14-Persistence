@@ -31,12 +31,6 @@ public sealed partial class LoadoutPrototype : IPrototype, IEquipmentLoadout
     [DataField]
     public ProtoId<StartingGearPrototype>? StartingGear;
 
-    // Moffstation - Begin
-    /// If not null, the loadout option's name will be this as opposed to trying to get it from any other source.
-    [DataField]
-    public LocId? NameOverride;
-    // Moffstation - End
-
     /// <summary>
     /// Effects to be applied when the loadout is applied.
     /// These can also return true or false for validation purposes.

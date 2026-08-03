@@ -6,7 +6,6 @@ using Content.Shared.Movement.Pulling.Events;
 using Content.Shared.Throwing;
 using Content.Shared.Weapons.Melee.Events;
 using Content.Shared.Xenoarchaeology.Artifact.Components;
-using Content.Shared.Xenoarchaeology.Artifact.XAT;
 using Content.Shared.Xenoarchaeology.Artifact.XAT.Components;
 using System.Linq;
 
@@ -24,7 +23,6 @@ public abstract partial class SharedXenoArtifactSystem
         XATRelayLocalEvent<InteractHandEvent>();
         XATRelayLocalEvent<ReactionEntityEvent>();
         XATRelayLocalEvent<LandEvent>();
-        XATRelayLocalEvent<XATItemInteractDoAfterEvent>();
 
         // special case this one because we need to order the messages
         SubscribeLocalEvent<XenoArtifactComponent, ExaminedEvent>(OnExamined);

@@ -319,7 +319,3 @@
   materials:
     Brass: 550
 
-- type: latheRecipe
-  parent: BaseBibleRecipe
-  id: BibleEmbrace
-  result: BibleEmbrace

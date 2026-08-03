@@ -360,7 +360,6 @@
         - !type:ReagentCondition
           reagent: JuiceThatMakesYouWeh
           min: 50
-      
 
 - type: reagent
   id: JuiceThatMakesYouHew

@@ -263,8 +263,6 @@ namespace Content.Server.Lathe
                 if (currentRecipe.Result is { } resultProto)
                 {
                     var result = Spawn(resultProto, Transform(uid).Coordinates);
-                    var producedEv = new LatheItemProducedEvent(currentRecipe, result);
-                    RaiseLocalEvent(uid, ref producedEv);
                     _stack.TryMergeToContacts(result);
                 }
 

@@ -40,7 +40,6 @@
   materials:
     Steel: 1000
     Glass: 500
-    Phoron: 50
     # If they get spammed make it cost silver.
 
 - type: latheRecipe

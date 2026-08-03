@@ -24,7 +24,6 @@ public sealed class IFFConsoleBoundUserInterface : BoundUserInterface
         _window = this.CreateWindowCenteredLeft<IFFConsoleWindow>();
         _window.ShowIFF += SendIFFMessage;
         _window.ShowVessel += SendVesselMessage;
-        _window.ShowFactionTag += SendFactionTagMessage;
         _window.OnSetColor += SendColorMessage;
         _window.SetDesignation += SendDesignationMessage;
     }
@@ -50,14 +49,6 @@ public sealed class IFFConsoleBoundUserInterface : BoundUserInterface
     private void SendVesselMessage(bool obj)
     {
         SendMessage(new IFFShowVesselMessage()
-        {
-            Show = obj,
-        });
-    }
-
-    private void SendFactionTagMessage(bool obj)
-    {
-        SendMessage(new IFFShowFactionTagMessage()
         {
             Show = obj,
         });

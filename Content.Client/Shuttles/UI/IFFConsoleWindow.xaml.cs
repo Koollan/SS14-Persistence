@@ -18,7 +18,6 @@ public sealed partial class IFFConsoleWindow : FancyWindow,
     private const int SignatureHexLength = 6;
     private readonly ButtonGroup _showIFFButtonGroup = new();
     private readonly ButtonGroup _showVesselButtonGroup = new();
-    private readonly ButtonGroup _showFactionTagButtonGroup = new();
     private readonly StyleBoxFlat _swatchStyleBox = new();
     private bool _canEditColor;
     private bool _canEditDesignation;
@@ -27,7 +26,6 @@ public sealed partial class IFFConsoleWindow : FancyWindow,
     private bool _updatingColorControls;
     public event Action<bool>? ShowIFF;
     public event Action<bool>? ShowVessel;
-    public event Action<bool>? ShowFactionTag;
     public event Action<string>? OnSetColor;
     public event Action<IFFDesignation>? SetDesignation;
 
@@ -45,11 +43,6 @@ public sealed partial class IFFConsoleWindow : FancyWindow,
         ShowVesselOnButton.Group = _showVesselButtonGroup;
         ShowVesselOnButton.OnPressed += args => ShowVesselPressed(true);
         ShowVesselOffButton.OnPressed += args => ShowVesselPressed(false);
-
-        ShowFactionTagOffButton.Group = _showFactionTagButtonGroup;
-        ShowFactionTagOnButton.Group = _showFactionTagButtonGroup;
-        ShowFactionTagOnButton.OnPressed += args => ShowFactionTagPressed(true);
-        ShowFactionTagOffButton.OnPressed += args => ShowFactionTagPressed(false);
 
         SignatureColorSwatch.PanelOverride = _swatchStyleBox;
         DesignationOptionButton.OnItemSelected += args => OnDesignationSelected(args.Id);
@@ -75,11 +68,6 @@ public sealed partial class IFFConsoleWindow : FancyWindow,
     private void ShowVesselPressed(bool pressed)
     {
         ShowVessel?.Invoke(pressed);
-    }
-
-    private void ShowFactionTagPressed(bool pressed)
-    {
-        ShowFactionTag?.Invoke(pressed);
     }
 
     private void ApplySignatureColor()
@@ -196,13 +184,6 @@ public sealed partial class IFFConsoleWindow : FancyWindow,
             ShowVesselOffButton.Disabled = true;
             ShowVesselOnButton.Disabled = true;
         }
-
-        ShowFactionTagOffButton.Disabled = false;
-        ShowFactionTagOnButton.Disabled = false;
-        if (state.ShowFactionTag)
-            ShowFactionTagOnButton.Pressed = true;
-        else
-            ShowFactionTagOffButton.Pressed = true;
 
         _canEditColor = state.ColorEditable;
         UpdateApplyButtonState();

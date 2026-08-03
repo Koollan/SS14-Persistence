@@ -120,11 +120,4 @@ namespace Content.Shared.Lathe
     /// </summary>
     [ByRefEvent]
     public readonly record struct LatheStartPrintingEvent(LatheRecipePrototype Recipe);
-
-    /// <summary>
-    /// Event raised on a lathe right after it spawns a produced item, carrying the spawned entity so other
-    /// systems can redirect it (e.g. hand it to a flatpacker).
-    /// </summary>
-    [ByRefEvent]
-    public readonly record struct LatheItemProducedEvent(LatheRecipePrototype Recipe, EntityUid Result);
 }

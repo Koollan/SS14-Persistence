@@ -1,11 +1,11 @@
 
 - type: cargoBounty
   id: BountySteel
-  reward: 40
+  reward: 100
   description: bounty-description-steel
   entries:
     - name: bounty-item-steel
-      amount: 250
+      amount: 100
       whitelist:
         tags:
         - Steel
@@ -14,11 +14,11 @@
 
 - type: cargoBounty
   id: BountyGold
-  reward: 165
+  reward: 300
   description: bounty-description-gold
   entries:
     - name: bounty-item-gold
-      amount: 60
+      amount: 35
       whitelist:
         tags:
         - Gold
@@ -27,11 +27,11 @@
 
 - type: cargoBounty
   id: BountySilver
-  reward: 130
+  reward: 300
   description: bounty-description-silver
   entries:
     - name: bounty-item-silver
-      amount: 75
+      amount: 30
       whitelist:
         tags:
         - Silver
@@ -79,11 +79,11 @@
 
 - type: cargoBounty
   id: BountyPlastic
-  reward: 40
+  reward: 150
   description: bounty-description-plastic
   entries:
     - name: bounty-item-plastic
-      amount: 250
+      amount: 60
       whitelist:
         tags:
         - Plastic

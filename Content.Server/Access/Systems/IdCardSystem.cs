@@ -18,7 +18,6 @@ using Content.Shared.Station.Components;
 using Content.Shared.Popups;
 using Content.Shared.StatusIcon;
 using Content.Shared.StatusIcon.Components;
-using Content.Shared.Station.Components;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Random;
 using System.Linq;
@@ -44,10 +43,10 @@ public sealed class IdCardSystem : SharedIdCardSystem
         base.Initialize();
 
         SubscribeLocalEvent<IdCardComponent, BeingMicrowavedEvent>(OnMicrowaved);
-        SubscribeLocalEvent<IdCardComponent, ComponentStartup>(OnCompInit);
+        SubscribeLocalEvent<IdCardComponent, ComponentInit>(OnCompInit);
     }
 
-    private void OnCompInit(EntityUid uid, IdCardComponent id, ComponentStartup args)
+    private void OnCompInit(EntityUid uid, IdCardComponent id, ComponentInit args)
     {
         if (id.LegalID <= 0 && _crewMeta.MetaRecords != null && !string.IsNullOrWhiteSpace(id.FullName))
         {
@@ -206,6 +205,7 @@ public sealed class IdCardSystem : SharedIdCardSystem
             comp.stationID = station;
             RebuildJob(uid, comp);
             UpdateEntityName(uid, comp);
+<<<<<<< HEAD
         }
     }
 
@@ -220,6 +220,8 @@ public sealed class IdCardSystem : SharedIdCardSystem
             RebuildJob(uid, comp);
             UpdateEntityName(uid, comp);
             Dirty(uid, comp);
+=======
+>>>>>>> parent of fd8fb67ec3 (Merge branch 'persistence_testing' into legal-ID-refactor)
         }
     }
 
@@ -296,15 +298,6 @@ public sealed class IdCardSystem : SharedIdCardSystem
                     {
                         comp.LocalizedJobTitle = crewAssignment.Name;
                         comp.JobIcon = crewAssignment.JobIcon;
-                        // IDs show assignment as "[TAG] Job" so players can quickly identify
-                        // which faction the card holder currently works for.
-                        var factionTag = string.Empty;
-                        if (TryComp<StationDataComponent>(station, out var stationData))
-                            factionTag = stationData.GetResolvedFactionTag(MetaData(station.Value).EntityName);
-
-                        comp.LocalizedJobTitle = string.IsNullOrEmpty(factionTag)
-                            ? crewAssignment.Name
-                            : $"[{factionTag}] {crewAssignment.Name}";
                         found = true;
                     }
                 }

@@ -21,7 +21,6 @@
     UniformScrubsColorGreen: 2
     UniformScrubsColorBlue: 2
     UniformScrubsColorPurple: 2
-    ClothingUniformJumpsuitCoroner: 1
     ClothingUniformJumpsuitParamedic: 1
     ClothingUniformJumpskirtParamedic: 1
     ClothingOuterCoatLab: 2
@@ -30,7 +29,6 @@
     ClothingOuterWinterPara: 1
     ClothingHandsGlovesLatex: 2
     ClothingHandsGlovesNitrile: 2
-    ClothingHandsGlovesNitrileForensic: 2
     ClothingShoesColorBlue: 2
     ClothingShoesColorWhite: 2
     ClothingShoesBootsWinterMed: 2

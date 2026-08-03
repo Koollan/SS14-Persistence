@@ -51,39 +51,20 @@ public sealed partial class AtmosphereSystem
             tile.GridIndex = uid;
         }
 
-        component.RestoreDeviceOrder = component.AtmosDevicesOrder.Count > 0;
-    }
+        //Check there are devices to pre-add to hashset
+        if (component.AtmosDevicesOrder.Count == 0)
+            return;
 
-
-    // Persistence Edit: Keep device order on load
-    private void ReapplyDeviceOrder(GridAtmosphereComponent atmos)
-    {
-        atmos.RestoreDeviceOrder = false;
-
-        var byUid = new Dictionary<EntityUid, Entity<AtmosDeviceComponent>>(atmos.AtmosDevices.Count);
-        foreach (var device in atmos.AtmosDevices)
+        //Pre-load hashset with serialised atmos queue from save
+        foreach (var deviceUid in component.AtmosDevicesOrder)
         {
-            byUid[device.Owner] = device;
+            if (!TryComp(deviceUid, out AtmosDeviceComponent? deviceComp))
+                continue;
+
+            var device = new Entity<AtmosDeviceComponent>(deviceUid, deviceComp);
+            if (!component.AtmosDevices.Add(device))
+                continue;
         }
-
-        var ordered = new List<Entity<AtmosDeviceComponent>>(atmos.AtmosDevices.Count);
-        var placed = new HashSet<EntityUid>();
-
-        foreach (var uid in atmos.AtmosDevicesOrder)          // saved order first
-        {
-            if (byUid.TryGetValue(uid, out var device) && placed.Add(uid))
-                ordered.Add(device);
-        }
-
-        foreach (var device in atmos.AtmosDevices)            // anything new keeps relative order
-        {
-            if (!placed.Contains(device.Owner))
-                ordered.Add(device);
-        }
-
-        atmos.AtmosDevices.Clear();                            // resets free list to indices 0..n-1
-        foreach (var device in ordered)
-            atmos.AtmosDevices.Add(device);
     }
 
     private void OnGridAtmosphereStartup(EntityUid uid, GridAtmosphereComponent component, ComponentStartup args)

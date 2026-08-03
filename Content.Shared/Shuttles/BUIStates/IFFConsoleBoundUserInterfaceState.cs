@@ -12,7 +12,6 @@ public sealed class IFFConsoleBoundUserInterfaceState : BoundUserInterfaceState
     public bool ColorEditable;
     public IFFDesignation Designation;
     public bool DesignationEditable;
-    public bool ShowFactionTag;
 }
 
 [Serializable, NetSerializable]

@@ -174,7 +174,10 @@
   - type: Sprite
     sprite: Clothing/Back/Duffels/syndicate.rsi
   - type: ExplosionResistance
-    damageCoefficient: 0.5
+    damageCoefficient: 0.1
+  - type: Storage
+    grid:
+    - 0,0,8,4
 
 - type: entity
   parent: [ ClothingBackpackDuffelSyndicate, BaseSyndicateContraband ]
@@ -272,5 +275,5 @@
     maxItemSize: Huge
   - type: ClothingSpeedModifier
     walkModifier: 1
-    sprintModifier: 0.9
+    sprintModifier: 1
   - type: HeldSpeedModifier

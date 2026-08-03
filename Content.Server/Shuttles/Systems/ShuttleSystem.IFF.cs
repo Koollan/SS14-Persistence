@@ -12,7 +12,6 @@ public sealed partial class ShuttleSystem
     {
         SubscribeLocalEvent<IFFConsoleComponent, AnchorStateChangedEvent>(OnIFFConsoleAnchor);
         SubscribeLocalEvent<IFFConsoleComponent, IFFShowIFFMessage>(OnIFFShow);
-        SubscribeLocalEvent<IFFConsoleComponent, IFFShowFactionTagMessage>(OnIFFShowFactionTag);
         SubscribeLocalEvent<IFFConsoleComponent, IFFSetColorMessage>(OnIFFSetColor);
         SubscribeLocalEvent<IFFConsoleComponent, IFFSetDesignationMessage>(OnIFFSetDesignation);
         SubscribeLocalEvent<IFFConsoleComponent, MapInitEvent>(OnInitIFFConsole);
@@ -54,20 +53,6 @@ public sealed partial class ShuttleSystem
             RemoveIFFFlag(xform.GridUid.Value, IFFFlags.HideLabel);
             RemoveIFFFlag(xform.GridUid.Value, IFFFlags.Hide);
         }
-    }
-
-    private void OnIFFShowFactionTag(EntityUid uid, IFFConsoleComponent component, IFFShowFactionTagMessage args)
-    {
-        if (!TryComp(uid, out TransformComponent? xform) || xform.GridUid is not { } gridUid)
-            return;
-
-        var iff = EnsureComp<IFFComponent>(gridUid);
-        if (iff.ShowFactionTag == args.Show)
-            return;
-
-        iff.ShowFactionTag = args.Show;
-        Dirty(gridUid, iff);
-        UpdateIFFInterfaces(gridUid, iff);
     }
 
     private void OnInitIFFConsole(EntityUid uid, IFFConsoleComponent component, MapInitEvent args)
@@ -133,7 +118,6 @@ public sealed partial class ShuttleSystem
                 ColorEditable = component.AllowColorChange,
                 Designation = IFFDesignation.Other,
                 DesignationEditable = component.AllowDesignationChange,
-                ShowFactionTag = true,
             });
         }
         else
@@ -146,7 +130,6 @@ public sealed partial class ShuttleSystem
                 ColorEditable = component.AllowColorChange,
                 Designation = iff.Designation,
                 DesignationEditable = component.AllowDesignationChange,
-                ShowFactionTag = iff.ShowFactionTag,
             });
         }
     }
@@ -169,7 +152,6 @@ public sealed partial class ShuttleSystem
                 ColorEditable = comp.AllowColorChange,
                 Designation = component.Designation,
                 DesignationEditable = comp.AllowDesignationChange,
-                ShowFactionTag = component.ShowFactionTag,
             });
         }
     }

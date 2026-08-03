@@ -55,16 +55,6 @@
 
 - type: latheRecipe
   parent: BaseToolRecipe
-  id: GridConfigurator
-  result: GridConfigurator
-  completetime: 2
-  materials:
-    Steel: 600
-    Plastic: 800
-    Glass: 400
-
-- type: latheRecipe
-  parent: BaseToolRecipe
   id: Wrench
   result: Wrench
   materials:

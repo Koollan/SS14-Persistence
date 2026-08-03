@@ -28,7 +28,7 @@
         mask:
         - MachineMask
         layer:
-        - GlassLayer
+        - MidImpassable, LowImpassable, BulletImpassable
   - type: Sprite
     sprite: Structures/Power/Generation/solar_panel.rsi
     state: solar_panel_glass
@@ -107,7 +107,7 @@
     supplyRampTolerance: 500
     supplyRampRate: 500
   - type: SolarPanel
-    maxSupply: 4000
+    maxSupply: 3000
   - type: Sprite
     sprite: Structures/Power/Generation/solar_panel.rsi
     state: solar_panel_phoron
