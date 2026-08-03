@@ -196,7 +196,6 @@ public sealed class IdCardSystem : SharedIdCardSystem
     }
 
     public void UpdateIDAssignment(int legalID, int station)
-    public void RefreshStationIds(int stationId)
     {
         var query = EntityQueryEnumerator<IdCardComponent>();
         while (query.MoveNext(out var uid, out var comp))
@@ -204,10 +203,17 @@ public sealed class IdCardSystem : SharedIdCardSystem
             if (comp.LegalID != legalID)
                 continue;
 
-            comp.LegalID = legalID;
             comp.stationID = station;
             RebuildJob(uid, comp);
             UpdateEntityName(uid, comp);
+        }
+    }
+
+    public void RefreshStationIds(int stationId)
+    {
+        var query = EntityQueryEnumerator<IdCardComponent>();
+        while (query.MoveNext(out var uid, out var comp))
+        {
             if (comp.stationID != stationId)
                 continue;
 
