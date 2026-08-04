@@ -104,6 +104,8 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
         if (!TryComp(station, out CrewRecordsComponent? stationData) || stationData == null)
             return null;
 
+        stationData.NormalizeLegacyRecords(EntityManager);
+
         if (int.TryParse(query, out var legalId) && stationData.TryGetRecord(legalId, out var legalRecord))
             return legalRecord;
 
@@ -163,6 +165,8 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
 
         if (!TryComp(station, out CrewRecordsComponent? stationData) || stationData == null)
             return null;
+
+        stationData.NormalizeLegacyRecords(EntityManager);
 
         if (idCard.LegalID > 0 && stationData.TryGetRecord(idCard.LegalID, out var legalRecord))
             return legalRecord;
@@ -414,6 +418,7 @@ public sealed class IdCardConsoleSystem : SharedIdCardConsoleSystem
         var sortedrecords = records;
         if(TryComp(station, out CrewRecordsComponent? crewRecords))
         {
+            crewRecords.NormalizeLegacyRecords(EntityManager);
             records = crewRecords.CrewRecords.Values.ToList();
             sortedrecords = records.OrderByDescending(record => record.LastPaid).ToList();
         }

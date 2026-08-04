@@ -10,6 +10,8 @@ namespace Content.Shared.CrewMetaRecords;
 [RegisterComponent]
 public sealed partial class CrewMetaRecordsComponent : Component
 {
+    private const string LegacyPlaceholderName = "Unnamed Crew Meta Record";
+
     [DataField]
     public string SectorStatus = "";
     [DataField]
@@ -33,10 +35,31 @@ public sealed partial class CrewMetaRecordsComponent : Component
     public Dictionary<string, CrewMetaRecord> CrewMetaRecords { get; set; } = new();
     [DataField]
     public Dictionary<int, EntityUid> Stations { get; set; } = new();
+
+    public void NormalizeLegacyRecords(EntityManager? entityManager = null)
+    {
+        var changed = false;
+        foreach (var (key, record) in CrewMetaRecords)
+        {
+            if (BackfillLegacyRecord(key, record))
+                changed = true;
+        }
+
+        if (!changed)
+            return;
+
+        if (entityManager != null)
+            entityManager.Dirty(Owner, this);
+        else
+            Dirty();
+    }
+
     public bool TryGetRecord(int legalID, out CrewMetaRecord? record)
     {
-        foreach (var currRecord in CrewMetaRecords.Values)
+        foreach (var (key, currRecord) in CrewMetaRecords)
         {
+            BackfillLegacyRecord(key, currRecord);
+
             if (currRecord.LegalID == legalID)
             {
                 record = currRecord;
@@ -50,9 +73,25 @@ public sealed partial class CrewMetaRecordsComponent : Component
 
     public bool TryGetRecord(string name, out CrewMetaRecord? record)
     {
-        foreach (var currRecord in CrewMetaRecords.Values)
+        if (string.IsNullOrWhiteSpace(name))
         {
-            if (currRecord.Name == name || currRecord.RealName == name || currRecord.CustomName == name)
+            record = null;
+            return false;
+        }
+
+        foreach (var (key, currRecord) in CrewMetaRecords)
+        {
+            BackfillLegacyRecord(key, currRecord);
+
+            if (string.Equals(key, name, StringComparison.OrdinalIgnoreCase))
+            {
+                record = currRecord;
+                return true;
+            }
+
+            if (string.Equals(currRecord.Name, name, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(currRecord.RealName, name, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(currRecord.CustomName, name, StringComparison.OrdinalIgnoreCase))
             {
                 record = currRecord;
                 return true;
@@ -80,11 +119,23 @@ public sealed partial class CrewMetaRecordsComponent : Component
 
     public bool TryEnsureRecord(int legalID, string realName, out CrewMetaRecord? record, EntityManager? entityManager = null)
     {
+        NormalizeLegacyRecords(entityManager);
+
         if (TryGetRecord(legalID, out record))
             return true;
 
         if (TryGetRecord(realName, out record) && record != null)
         {
+            // Prevent accidentally reusing a legacy name record that already belongs
+            // to a different legal identity.
+            if (record.LegalID > 0 && record.LegalID != legalID)
+            {
+                CreateRecord(legalID, realName, out record);
+                if (entityManager != null)
+                    entityManager.Dirty(Owner, this);
+                return true;
+            }
+
             var changed = false;
             if (record.LegalID <= 0)
             {
@@ -117,11 +168,105 @@ public sealed partial class CrewMetaRecordsComponent : Component
 
     public bool TryEnsureRecord(string name, out CrewMetaRecord? record, EntityManager? entityManager = null)
     {
+        NormalizeLegacyRecords(entityManager);
+
         if (TryGetRecord(name, out record))
             return true;
 
-        record = null;
-        return false;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            record = null;
+            return false;
+        }
+
+        // Legacy compatibility: old systems still ensure by name.
+        var key = name;
+        if (CrewMetaRecords.ContainsKey(key))
+            key = $"legacy:{name}:{Guid.NewGuid():N}";
+
+        record = new CrewMetaRecord(name);
+        CrewMetaRecords[key] = record;
+
+        if (entityManager != null)
+            entityManager.Dirty(Owner, this);
+
+        return true;
+    }
+
+    private bool BackfillLegacyRecord(string key, CrewMetaRecord record)
+    {
+        var changed = false;
+
+        var inferredName = InferNameFromKey(key);
+        if (!string.IsNullOrWhiteSpace(inferredName))
+        {
+            if (string.IsNullOrWhiteSpace(record.Name) || record.Name == LegacyPlaceholderName)
+            {
+                record.Name = inferredName;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.RealName) || record.RealName == LegacyPlaceholderName)
+            {
+                record.RealName = inferredName;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.CustomName) || record.CustomName == LegacyPlaceholderName)
+            {
+                record.CustomName = inferredName;
+                changed = true;
+            }
+        }
+
+        if (record.LegalID <= 0 && TryInferLegalIdFromKey(key, out var inferredLegalId))
+        {
+            record.LegalID = inferredLegalId;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private static bool TryInferLegalIdFromKey(string key, out int legalId)
+    {
+        legalId = 0;
+
+        var keyPart = key;
+        var separator = key.IndexOf(':');
+        if (separator > 0)
+            keyPart = key[..separator];
+
+        return int.TryParse(keyPart, out legalId) && legalId > 0;
+    }
+
+    private static string? InferNameFromKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return null;
+
+        if (key.StartsWith("legacy:", StringComparison.OrdinalIgnoreCase))
+        {
+            var legacy = key["legacy:".Length..];
+            var tailSeparator = legacy.LastIndexOf(':');
+            if (tailSeparator > 0)
+            {
+                var tail = legacy[(tailSeparator + 1)..];
+                if (Guid.TryParseExact(tail, "N", out _))
+                    return legacy[..tailSeparator];
+            }
+
+            return legacy;
+        }
+
+        var separator = key.IndexOf(':');
+        if (separator > 0 && int.TryParse(key[..separator], out _))
+            return key[(separator + 1)..];
+
+        if (int.TryParse(key, out _))
+            return null;
+
+        return key;
     }
 }
 

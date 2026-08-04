@@ -679,6 +679,13 @@ namespace Content.Server.GameTicking
                 SpawnPlayer(player, EntityUid.Invalid);
         }
 
+        public void RespawnToLobby(ICommonSession player)
+        {
+            _mind.WipeMind(player);
+            _adminLogger.Add(LogType.Respawn, LogImpact.Medium, $"Player {player} was respawned to lobby.");
+            PlayerJoinLobby(player);
+        }
+
         /// <summary>
         /// Makes a player join into the game and spawn on a station.
         /// </summary>

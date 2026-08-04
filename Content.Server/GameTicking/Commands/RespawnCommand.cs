@@ -63,7 +63,7 @@ namespace Content.Server.GameTicking.Commands
                 return;
             }
 
-            _gameTicker.Respawn(targetPlayer);
+            _gameTicker.RespawnToLobby(targetPlayer);
         }
 
         public override CompletionResult GetCompletion(IConsoleShell shell, string[] args)

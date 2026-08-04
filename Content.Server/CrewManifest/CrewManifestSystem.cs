@@ -221,6 +221,8 @@ public sealed class CrewManifestSystem : EntitySystem
         if (!TryComp<CrewRecordsComponent>(station, out var crewRecords) || crewRecords == null) return;
         if (!TryComp<CrewAssignmentsComponent>(station, out var crewAssignments) || crewAssignments == null) return;
 
+        crewRecords.NormalizeLegacyRecords(EntityManager);
+
         var entries = new CrewManifestEntries();
 
         var entriesSort = new List<(JobPrototype? job, CrewManifestEntry entry)>();

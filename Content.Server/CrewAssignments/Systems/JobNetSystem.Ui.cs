@@ -18,6 +18,7 @@ using Robust.Server.GameObjects;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Player;
 using Robust.Shared.Prototypes;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Content.Server.CrewAssignments.Systems;
 
@@ -85,9 +86,7 @@ public sealed partial class JobNetSystem
         string? factionName = null;
         foreach (var station in stations)
         {
-            if (!TryComp<CrewRecordsComponent>(station, out var crewRecord)
-                || (!crewRecord.TryGetRecord(legalID, out var record)
-                || record == null)
+            if (!TryGetOrMigrateCrewRecord(user.Value, station, legalID, out var record)
                 || !TryComp<StationDataComponent>(station, out var stationData)
                 || stationData.StationName == null
                 || (component.WorkingFor == null || component.WorkingFor == 0)
@@ -129,39 +128,36 @@ public sealed partial class JobNetSystem
         var sectorStatus = "";
         foreach (var station in stations)
         {
-            if (TryComp<CrewRecordsComponent>(station, out var crewRecord) && crewRecord != null)
+            if (TryGetOrMigrateCrewRecord(user.Value, station, legalID, out var record))
             {
-                if (crewRecord.TryGetRecord(legalID, out var record) && record != null)
+                if (TryComp<StationDataComponent>(station, out var stationData))
                 {
-                    if (TryComp<StationDataComponent>(station, out var stationData))
+                    if (stationData.StationName == null) continue;
+                    if (stationData.JobNetEnabled)
                     {
-                        if (stationData.StationName == null) continue;
-                        if (stationData.JobNetEnabled)
+                        possibleStations.Add(stationData.UID, stationData.StationName);
+                    }
+                    if (component.WorkingFor != null && component.WorkingFor != 0)
+                    {
+                        if (stationData.UID == component.WorkingFor)
                         {
-                            possibleStations.Add(stationData.UID, stationData.StationName);
-                        }
-                        if (component.WorkingFor != null && component.WorkingFor != 0)
-                        {
-                            if (stationData.UID == component.WorkingFor)
+                            if (TryComp<CrewAssignmentsComponent>(station, out var crewAssignments))
                             {
-                                if (TryComp<CrewAssignmentsComponent>(station, out var crewAssignments))
+                                if (crewAssignments.TryGetAssignment(record.AssignmentID, out var assignment) && assignment != null)
                                 {
-                                    if (crewAssignments.TryGetAssignment(record.AssignmentID, out var assignment) && assignment != null)
+                                    assignmentName = assignment.Name;
+                                    wage = assignment.Wage;
+                                    selectedstation = stationData.UID;
+                                    if (_station.CanSpend(record.Name, station))
                                     {
-                                        assignmentName = assignment.Name;
-                                        wage = assignment.Wage;
-                                        selectedstation = stationData.UID;
-                                        if (_station.CanSpend(record.Name, station))
-                                        {
-                                            spendAuth = true;
-                                            spent = record.Spent;
-                                            spendable = assignment.SpendingLimit;
-                                        }
-                                        if (_station.IsOwner(record.Name, station))
-                                        {
-                                            spent = 0;
-                                            spendable = 99999999;
-                                        }
+                                        spendAuth = true;
+                                        spent = record.Spent;
+                                        spendable = assignment.SpendingLimit;
+                                    }
+                                    if (_station.IsOwner(record.Name, station))
+                                    {
+                                        spent = 0;
+                                        spendable = 99999999;
                                     }
                                 }
                             }
@@ -211,6 +207,32 @@ public sealed partial class JobNetSystem
 
         var state = new JobNetUpdateState(possibleStations, assignmentName, wage, selectedstation, remainingTime, currentObjectives, completedObjectives, codexEntries, currentLevel, balance, spendAuth, spent, spendable, component.Precursor, component.PrecursorObjectives, component.PrecursorResetTime, component.RogueLevel, component.XP, component.NetworkType, component.SecretPhrase, component.KillTarget, component.DealerBounty, stationName, component.RogueNetResetTime, sectorChaos, _cargo.GetSectorDevelopment(), sectorStatus);
         _ui.SetUiState(jobnet, JobNetUiKey.Key, state);
+    }
+
+    private bool TryGetOrMigrateCrewRecord(EntityUid user, EntityUid station, int legalId, [NotNullWhen(true)] out CrewRecord? record)
+    {
+        record = null;
+
+        if (!TryComp<CrewRecordsComponent>(station, out var crewRecords) || crewRecords == null)
+            return false;
+
+        crewRecords.NormalizeLegacyRecords(EntityManager);
+        if (crewRecords.TryGetRecord(legalId, out record) && record != null)
+            return true;
+
+        if (!_mind.TryGetMind(user, out _, out var mind) || mind == null)
+            return false;
+
+        var fallbackName = !string.IsNullOrWhiteSpace(mind.RealName)
+            ? mind.RealName
+            : !string.IsNullOrWhiteSpace(mind.CustomName)
+                ? mind.CustomName
+                : Name(user);
+
+        if (string.IsNullOrWhiteSpace(fallbackName))
+            return false;
+
+        return crewRecords.TryEnsureRecord(legalId, fallbackName, out record, EntityManager) && record != null;
     }
 
     private void OnRequestUpdate(EntityUid uid, JobNetComponent component, JobNetRequestUpdateInterfaceMessage args)

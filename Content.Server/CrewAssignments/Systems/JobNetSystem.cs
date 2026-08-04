@@ -442,7 +442,12 @@ public sealed partial class JobNetSystem : SharedJobNetSystem
     {
         ProtoId<NetworkLevelPrototype> currentLevel = "NetworkLevel1";
         if (_meta.MetaRecords == null) return;
-        if (_meta.MetaRecords.TryGetRecord(Name(args.Actor), out var record) && record != null)
+
+        if (!_mind.TryGetLegalID(args.Actor, out var legalID))
+            return;
+
+        _meta.MetaRecords.NormalizeLegacyRecords(EntityManager);
+        if (_meta.MetaRecords.TryGetRecord(legalID, out var record) && record != null)
         {
             currentLevel = record.Level;
         }
@@ -490,33 +495,30 @@ public sealed partial class JobNetSystem : SharedJobNetSystem
             return;
         }
 
-        if (TryComp<CrewRecordsComponent>(station, out var crewRecord) && crewRecord != null)
+        if (TryGetOrMigrateCrewRecord(args.Actor, station.Value, legalID, out var record))
         {
-            if (crewRecord.TryGetRecord(legalID, out var record) && record != null)
+            if (TryComp<StationDataComponent>(station, out var stationData))
             {
-                if (TryComp<StationDataComponent>(station, out var stationData))
+                if (TryComp<CrewAssignmentsComponent>(station, out var crewAssignments))
                 {
-                    if (TryComp<CrewAssignmentsComponent>(station, out var crewAssignments))
+                    if (crewAssignments.TryGetAssignment(record.AssignmentID, out var assignment) && assignment != null)
                     {
-                        if (crewAssignments.TryGetAssignment(record.AssignmentID, out var assignment) && assignment != null)
+                        if (component.LastWorkedFor != stationData.UID)
+                            component.WorkedTime = TimeSpan.Zero;
+                        var currentWorkingFor = component.WorkingFor;
+                        component.WorkingFor = stationData.UID;
+                        if (currentWorkingFor != 0 && currentWorkingFor != null)
                         {
-                            if (component.LastWorkedFor != stationData.UID)
-                                component.WorkedTime = TimeSpan.Zero;
-                            var currentWorkingFor = component.WorkingFor;
-                            component.WorkingFor = stationData.UID;
-                            if (currentWorkingFor != 0 && currentWorkingFor != null)
-                            {
-                                var sId = _station.GetStationByID(currentWorkingFor.Value);
-                                if (sId != null) _crewManifest.BuildCrewManifest(sId.Value);
-                            }
-                            if (component.WorkingFor != 0 && component.WorkingFor != null)
-                            {
-                                var sId = _station.GetStationByID(component.WorkingFor.Value);
-                                if (sId != null) _crewManifest.BuildCrewManifest(sId.Value);
-                            }
-                            _card.UpdateIDAssignment(legalID, args.ID);
-                            UpdateUserInterface(args.Actor, uid, component);
+                            var sId = _station.GetStationByID(currentWorkingFor.Value);
+                            if (sId != null) _crewManifest.BuildCrewManifest(sId.Value);
                         }
+                        if (component.WorkingFor != 0 && component.WorkingFor != null)
+                        {
+                            var sId = _station.GetStationByID(component.WorkingFor.Value);
+                            if (sId != null) _crewManifest.BuildCrewManifest(sId.Value);
+                        }
+                        _card.UpdateIDAssignment(legalID, args.ID);
+                        UpdateUserInterface(args.Actor, uid, component);
                     }
                 }
             }
@@ -773,60 +775,27 @@ public sealed partial class JobNetSystem : SharedJobNetSystem
         var name = Name(player.Value);
         if (!_mind.TryGetLegalID(player.Value, out var legalID))
             return;
-        if (TryComp<CrewRecordsComponent>(station, out var crewRecord) && crewRecord != null)
+        if (TryGetOrMigrateCrewRecord(player.Value, station.Value, legalID, out var record))
         {
-            if (crewRecord.TryGetRecord(legalID, out var record) && record != null)
+            if (TryComp<StationDataComponent>(station, out var stationData))
             {
-                if (TryComp<StationDataComponent>(station, out var stationData))
+                if (TryComp<CrewAssignmentsComponent>(station, out var crewAssignments))
                 {
-                    if (TryComp<CrewAssignmentsComponent>(station, out var crewAssignments))
+                    if (crewAssignments.TryGetAssignment(record.AssignmentID, out var assignment) && assignment != null)
                     {
-                        if (crewAssignments.TryGetAssignment(record.AssignmentID, out var assignment) && assignment != null)
+                        if (assignment.Wage > 0)
                         {
-                            if (assignment.Wage > 0)
+                            if (TryComp<ActorComponent>(player, out var actor) && actor != null && actor.PlayerSession != null)
                             {
-                                if (TryComp<ActorComponent>(player, out var actor) && actor != null && actor.PlayerSession != null)
+                                record.LastPaid = DateTime.Now;
+                                var bank = _bank.GetMoneyAccountsComponent();
+                                if (bank == null) return;
+                                if (_cargo.TryGetAccount(station.Value, "Cargo", out var money))
                                 {
-                                    record.LastPaid = DateTime.Now;
-                                    var bank = _bank.GetMoneyAccountsComponent();
-                                    if (bank == null) return;
-                                    if (_cargo.TryGetAccount(station.Value, "Cargo", out var money))
-                                    {
-                                        if (money < assignment.Wage)
-                                        {
-                                            _audio.PlayEntity(component.ErrorSound, player.Value, player.Value);
-                                            var msg = $"{stationData.StationName} has failed to pay you your ${assignment.Wage} due to insufficient funds.";
-                                            if (msg != null)
-                                                _chatManager.ChatMessageToOne(Shared.Chat.ChatChannel.Notifications,
-                                                    msg,
-                                                    msg,
-                                                    station.Value,
-                                                    false,
-                                                    actor.PlayerSession.Channel
-                                                    );
-                                            return;
-                                        }
-                                        if (bank.TryGetAccount(name, out var account) && account != null)
-                                        {
-                                            _audio.PlayEntity(component.PaySuccessSound, player.Value, player.Value);
-                                            account.Balance += assignment.Wage;
-                                            _cargo.TryAdjustBankAccount(station.Value, "Cargo", -assignment.Wage);
-                                            var msg = $"You have received ${assignment.Wage} for working as a {assignment.Name} for {stationData.StationName}.";
-                                            if (msg != null)
-                                                _chatManager.ChatMessageToOne(Shared.Chat.ChatChannel.Notifications,
-                                                    msg,
-                                                    msg,
-                                                    station.Value,
-                                                    false,
-                                                    actor.PlayerSession.Channel
-                                                    );
-                                            _bank.DirtyMoneyAccountsComponent();
-                                        }
-                                    }
-                                    else
+                                    if (money < assignment.Wage)
                                     {
                                         _audio.PlayEntity(component.ErrorSound, player.Value, player.Value);
-                                        var msg = $"{stationData.StationName} has failed to pay you your ${assignment.Wage} due to an invalid account.";
+                                        var msg = $"{stationData.StationName} has failed to pay you your ${assignment.Wage} due to insufficient funds.";
                                         if (msg != null)
                                             _chatManager.ChatMessageToOne(Shared.Chat.ChatChannel.Notifications,
                                                 msg,
@@ -837,7 +806,37 @@ public sealed partial class JobNetSystem : SharedJobNetSystem
                                                 );
                                         return;
                                     }
+                                    if (bank.TryGetAccount(name, out var account) && account != null)
+                                    {
+                                        _audio.PlayEntity(component.PaySuccessSound, player.Value, player.Value);
+                                        account.Balance += assignment.Wage;
+                                        _cargo.TryAdjustBankAccount(station.Value, "Cargo", -assignment.Wage);
+                                        var msg = $"You have received ${assignment.Wage} for working as a {assignment.Name} for {stationData.StationName}.";
+                                        if (msg != null)
+                                            _chatManager.ChatMessageToOne(Shared.Chat.ChatChannel.Notifications,
+                                                msg,
+                                                msg,
+                                                station.Value,
+                                                false,
+                                                actor.PlayerSession.Channel
+                                                );
+                                        _bank.DirtyMoneyAccountsComponent();
+                                    }
 
+                                else
+                                {
+                                    _audio.PlayEntity(component.ErrorSound, player.Value, player.Value);
+                                    var msg = $"{stationData.StationName} has failed to pay you your ${assignment.Wage} due to an invalid account.";
+                                    if (msg != null)
+                                        _chatManager.ChatMessageToOne(Shared.Chat.ChatChannel.Notifications,
+                                            msg,
+                                            msg,
+                                            station.Value,
+                                            false,
+                                            actor.PlayerSession.Channel
+                                            );
+                                    return;
+                                }
                                 }
                             }
                         }
