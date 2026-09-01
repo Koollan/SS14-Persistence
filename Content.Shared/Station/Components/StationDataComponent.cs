@@ -56,7 +56,8 @@ public sealed partial class StationDataComponent : Component
     [DataField]
     public ProtoId<FactionLevelPrototype> Level = "FactionLevel1";
 
-    [DataField]
+    // Persistence 14: Replicate faction radio metadata to clients so headset and chat UI can resolve custom names, hotkeys, and colors without opening the faction console.
+    [DataField, AutoNetworkedField]
     public Dictionary<ProtoId<RadioChannelPrototype>, FactionRadioData> RadioData = new()
     {
         { "Common", new FactionRadioData(true) },
@@ -68,6 +69,7 @@ public sealed partial class StationDataComponent : Component
         { "Service", new FactionRadioData() },
         { "Supply", new FactionRadioData() }
     };
+    // End Persistence 14
 
     /// <summary>
     /// Optional custom faction tag set from the station modification console.
@@ -161,8 +163,22 @@ public sealed partial class StationDataComponent : Component
 [Virtual]
 public partial class FactionRadioData
 {
+    // Persistence 14: Store per-faction custom radio metadata separately from the shared radio prototypes so each faction can rename, recolor, and rebind its own channels.
     [DataField("_enabled")]
     public bool Enabled = false;
+
+    [DataField]
+    public bool IsCustom = false;
+
+    [DataField]
+    public char Hotkey = '\0';
+
+    [DataField]
+    public string? CustomName;
+
+    [DataField]
+    public string? CustomColor;
+
     [DataField("_access")]
     public List<string> Access = new();
 
@@ -171,4 +187,13 @@ public partial class FactionRadioData
     {
         Enabled = enabled;
     }
+
+    public Color GetColor()
+    {
+        if (string.IsNullOrWhiteSpace(CustomColor))
+            return Color.Lime;
+
+        return Color.TryFromHex(CustomColor) ?? Color.Lime;
+    }
+    // End Persistence 14
 }
