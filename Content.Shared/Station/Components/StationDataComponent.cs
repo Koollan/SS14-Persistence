@@ -61,13 +61,20 @@ public sealed partial class StationDataComponent : Component
     public Dictionary<ProtoId<RadioChannelPrototype>, FactionRadioData> RadioData = new()
     {
         { "Common", new FactionRadioData(true) },
+        { "CentCom", new FactionRadioData() },
         { "Command", new FactionRadioData() },
         { "Engineering", new FactionRadioData() },
         { "Medical", new FactionRadioData() },
         { "Science", new FactionRadioData() },
         { "Security", new FactionRadioData() },
         { "Service", new FactionRadioData() },
-        { "Supply", new FactionRadioData() }
+        { "Supply", new FactionRadioData() },
+        { "Syndicate", new FactionRadioData() },
+        { "Handheld", new FactionRadioData() },
+        { "Binary", new FactionRadioData() },
+        { "Freelance", new FactionRadioData() },
+        { "Xenoborg", new FactionRadioData() },
+        { "Mothership", new FactionRadioData() }
     };
     // End Persistence 14
 

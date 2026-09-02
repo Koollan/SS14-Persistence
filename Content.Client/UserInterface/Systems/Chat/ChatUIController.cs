@@ -720,7 +720,7 @@ public sealed partial class ChatUIController : UIController
         {
             foreach (var (channelId, radioData) in stationData.RadioData)
             {
-                if (!radioData.IsCustom || !radioData.Enabled)
+                if (!radioData.Enabled || radioData.Hotkey == '\0')
                     continue;
 
                 if (char.ToLowerInvariant(radioData.Hotkey) != key)
@@ -728,7 +728,7 @@ public sealed partial class ChatUIController : UIController
 
                 _prototypeManager.TryIndex(channelId, out RadioChannelPrototype? resolvedChannel);
                 var resolvedName = string.IsNullOrWhiteSpace(radioData.CustomName) ? null : radioData.CustomName;
-                var resolvedColor = radioData.GetColor();
+                Color? resolvedColor = string.IsNullOrWhiteSpace(radioData.CustomColor) ? null : radioData.GetColor();
                 return (true, resolvedChannel, resolvedName, resolvedColor);
             }
 

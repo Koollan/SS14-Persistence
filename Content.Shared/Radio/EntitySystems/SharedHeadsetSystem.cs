@@ -44,7 +44,7 @@ public abstract class SharedHeadsetSystem : EntitySystem
 
             foreach (var (channelId, data) in stationData.RadioData)
             {
-                if (!data.IsCustom || !data.Enabled)
+                if (!data.Enabled || data.Hotkey == '\0')
                     continue;
 
                 if (char.ToLowerInvariant(data.Hotkey) != key)

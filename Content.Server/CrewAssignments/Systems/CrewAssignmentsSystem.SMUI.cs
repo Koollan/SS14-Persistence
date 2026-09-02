@@ -558,9 +558,11 @@ public sealed partial class CrewAssignmentSystem
         if (name.Length > 24)
             name = name[..24];
 
-        if (stationData.RadioData.Values.Any(data => data.IsCustom && string.Equals(data.CustomName, name, StringComparison.OrdinalIgnoreCase)))
+        if (stationData.RadioData.Values.Any(data =>
+                !string.IsNullOrWhiteSpace(data.CustomName) &&
+                string.Equals(data.CustomName, name, StringComparison.OrdinalIgnoreCase)))
         {
-            ConsolePopup(player, "A custom channel with that name already exists.");
+            ConsolePopup(player, "A channel with that name already exists.");
             return;
         }
 
@@ -572,15 +574,15 @@ public sealed partial class CrewAssignmentSystem
         }
 
         var hotkey = char.ToLowerInvariant(hotkeyText[0]);
-        if (char.IsWhiteSpace(hotkey) || hotkey is ';' or ':' or '/' or '\\' or '[' or ']' or '>' or ',' or '@' or '*')
+        if (char.IsWhiteSpace(hotkey) || hotkey is ':' or '/' or '\\' or '[' or ']' or '>' or ',' or '@' or '*')
         {
             ConsolePopup(player, "Invalid hotkey character.");
             return;
         }
 
-        if (stationData.RadioData.Values.Any(data => data.IsCustom && char.ToLowerInvariant(data.Hotkey) == hotkey))
+        if (stationData.RadioData.Values.Any(data => data.Hotkey != '\0' && char.ToLowerInvariant(data.Hotkey) == hotkey))
         {
-            ConsolePopup(player, "That hotkey is already in use by another custom channel.");
+            ConsolePopup(player, "That hotkey is already in use by another channel.");
             return;
         }
 
@@ -630,15 +632,15 @@ public sealed partial class CrewAssignmentSystem
             return;
         }
 
-        if (!stationData.RadioData.TryGetValue(args.ChannelID, out var existing))
+        if (args.ChannelID == "Common")
         {
-            ConsolePopup(player, "Invalid Channel!");
+            ConsolePopup(player, "Common channel cannot be customized.");
             return;
         }
 
-        if (!existing.IsCustom)
+        if (!stationData.RadioData.TryGetValue(args.ChannelID, out var existing))
         {
-            ConsolePopup(player, "Only custom channels can be edited.");
+            ConsolePopup(player, "Invalid Channel!");
             return;
         }
 
@@ -652,12 +654,23 @@ public sealed partial class CrewAssignmentSystem
         if (name.Length > 24)
             name = name[..24];
 
-        if (stationData.RadioData.Any(pair =>
+        _protoMan.Resolve(args.ChannelID, out RadioChannelPrototype? channelProto);
+
+        var currentEffectiveName = !string.IsNullOrWhiteSpace(existing.CustomName)
+            ? existing.CustomName!
+            : channelProto?.LocalizedName ?? string.Empty;
+
+        var currentEffectiveHotkey = existing.Hotkey != '\0'
+            ? char.ToLowerInvariant(existing.Hotkey)
+            : char.ToLowerInvariant(channelProto?.KeyCode ?? '\0');
+
+        var nameChanged = !string.Equals(currentEffectiveName, name, StringComparison.OrdinalIgnoreCase);
+        if (nameChanged && stationData.RadioData.Any(pair =>
                 pair.Key != args.ChannelID &&
-                pair.Value.IsCustom &&
+                !string.IsNullOrWhiteSpace(pair.Value.CustomName) &&
                 string.Equals(pair.Value.CustomName, name, StringComparison.OrdinalIgnoreCase)))
         {
-            ConsolePopup(player, "A custom channel with that name already exists.");
+            ConsolePopup(player, "A channel with that name already exists.");
             return;
         }
 
@@ -669,21 +682,23 @@ public sealed partial class CrewAssignmentSystem
         }
 
         var hotkey = char.ToLowerInvariant(hotkeyText[0]);
-        if (char.IsWhiteSpace(hotkey) || hotkey is ';' or ':' or '/' or '\\' or '[' or ']' or '>' or ',' or '@' or '*')
+        if (char.IsWhiteSpace(hotkey) || hotkey is ':' or '/' or '\\' or '[' or ']' or '>' or ',' or '@' or '*')
         {
             ConsolePopup(player, "Invalid hotkey character.");
             return;
         }
 
-        if (stationData.RadioData.Any(pair =>
+        var hotkeyChanged = currentEffectiveHotkey == '\0' || currentEffectiveHotkey != hotkey;
+        if (hotkeyChanged && stationData.RadioData.Any(pair =>
                 pair.Key != args.ChannelID &&
-                pair.Value.IsCustom &&
+                pair.Value.Hotkey != '\0' &&
                 char.ToLowerInvariant(pair.Value.Hotkey) == hotkey))
         {
-            ConsolePopup(player, "That hotkey is already in use by another custom channel.");
+            ConsolePopup(player, "That hotkey is already in use by another channel.");
             return;
         }
 
+        existing.IsCustom = true;
         existing.CustomName = name;
         existing.Hotkey = hotkey;
         existing.CustomColor = ClampBrightCustomColor(args.Red, args.Green, args.Blue);

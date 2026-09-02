@@ -296,10 +296,12 @@ public sealed class RadioSystem : EntitySystem
         if (station == null || !TryComp<StationDataComponent>(station, out var stationData))
             return;
 
-        if (!stationData.RadioData.TryGetValue(channel.ID, out var radioData) || !radioData.IsCustom)
+        if (!stationData.RadioData.TryGetValue(channel.ID, out var radioData))
             return;
 
-        color = radioData.GetColor();
+        if (!string.IsNullOrWhiteSpace(radioData.CustomColor))
+            color = radioData.GetColor();
+
         if (!string.IsNullOrWhiteSpace(radioData.CustomName))
             name = radioData.CustomName;
     }

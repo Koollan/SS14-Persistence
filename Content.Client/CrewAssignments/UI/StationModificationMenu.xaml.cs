@@ -169,17 +169,14 @@ namespace Content.Client.CrewAssignments.UI
             _channelOrder.Clear();
             foreach (var owner in radioData)
             {
-                if (!owner.Value.IsCustom)
-                    continue;
-
                 _protoManager.Resolve(owner.Key, out var radioProto);
                 if (radioProto == null) continue;
 
-                var display = owner.Value.IsCustom && !string.IsNullOrWhiteSpace(owner.Value.CustomName)
+                var display = !string.IsNullOrWhiteSpace(owner.Value.CustomName)
                     ? owner.Value.CustomName!
                     : radioProto.LocalizedName;
 
-                if (owner.Value.IsCustom && owner.Value.Hotkey != '\0')
+                if (owner.Value.Hotkey != '\0')
                     display = $"{display} (:{owner.Value.Hotkey})";
 
                 _channelOrder.Add(owner.Key);
@@ -229,7 +226,7 @@ namespace Content.Client.CrewAssignments.UI
                 EditChannelName.Text = string.Empty;
                 EditChannelHotkey.Text = string.Empty;
                 EditChannelButton.Disabled = true;
-                EditChannelHint.Text = "No custom channels available to edit.";
+                EditChannelHint.Text = "No channels available to edit.";
 
                 foreach (Button button in ChannelAccessesBC.Children)
                 {
@@ -246,23 +243,23 @@ namespace Content.Client.CrewAssignments.UI
             ChannelDisable.Pressed = !data.Enabled;
 
             _suppressColorCallbacks = true;
-            if (data.IsCustom)
-            {
-                EditChannelName.Text = data.CustomName ?? string.Empty;
-                EditChannelHotkey.Text = data.Hotkey == '\0' ? string.Empty : data.Hotkey.ToString();
-                ChannelColorPicker.Color = ClampCustomChannelColor(data.GetColor());
-                EditChannelButton.Disabled = false;
-                EditChannelHint.Text = string.Empty;
-            }
-            else
-            {
-                _protoManager.Resolve(selectedId.Value, out var radioProto);
-                EditChannelName.Text = radioProto?.LocalizedName ?? selectedId.Value;
-                EditChannelHotkey.Text = radioProto == null || radioProto.KeyCode == '\0' ? string.Empty : radioProto.KeyCode.ToString();
-                ChannelColorPicker.Color = radioProto?.Color ?? Color.FromSrgb(new Color(44, 219, 44));
-                EditChannelButton.Disabled = true;
-                EditChannelHint.Text = "Only custom channels can be edited.";
-            }
+            _protoManager.Resolve(selectedId.Value, out var selectedProto);
+            EditChannelName.Text = !string.IsNullOrWhiteSpace(data.CustomName)
+                ? data.CustomName
+                : selectedProto?.LocalizedName ?? selectedId.Value;
+            EditChannelHotkey.Text = data.Hotkey != '\0'
+                ? data.Hotkey.ToString()
+                : (selectedProto == null || selectedProto.KeyCode == '\0' ? string.Empty : selectedProto.KeyCode.ToString());
+
+            var sourceColor = string.IsNullOrWhiteSpace(data.CustomColor)
+                ? selectedProto?.Color ?? Color.FromSrgb(new Color(44, 219, 44))
+                : data.GetColor();
+            ChannelColorPicker.Color = ClampCustomChannelColor(sourceColor);
+            var isCommonChannel = selectedId.Value == "Common";
+            EditChannelButton.Disabled = isCommonChannel;
+            EditChannelHint.Text = isCommonChannel
+                ? "Common channel cannot be customized."
+                : string.Empty;
             _suppressColorCallbacks = false;
             UpdateColorPreview(ChannelColorPreview, ChannelColorPicker.Color);
 
