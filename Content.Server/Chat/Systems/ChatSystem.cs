@@ -13,6 +13,8 @@ using Content.Shared.Database;
 using Content.Shared.Examine;
 using Content.Shared.Ghost;
 using Content.Shared.IdentityManagement;
+using Content.Shared.Mobs; // funky
+using Content.Shared.Mobs.Components; // funky
 using Content.Shared.Mobs.Systems;
 using Content.Shared.Players;
 using Content.Shared.Players.RateLimiting;
@@ -168,6 +170,14 @@ public sealed partial class ChatSystem : SharedChatSystem
             return;
 
         ignoreActionBlocker = CheckIgnoreSpeechBlocker(source, ignoreActionBlocker);
+
+        // funky
+        if (!ignoreActionBlocker && TryComp<MobStateComponent>(source, out var mobState) && mobState.CurrentState == MobState.SoftCritical)
+        {
+            if (desiredType == InGameICChatType.Speak)
+                desiredType = InGameICChatType.Whisper;
+        }
+        // funky end
 
         // this method is a disaster
         // every second i have to spend working with this code is fucking agony
@@ -379,6 +389,11 @@ public sealed partial class ChatSystem : SharedChatSystem
         if (!_actionBlocker.CanSpeak(source) && !ignoreActionBlocker)
             return;
 
+        // funky
+        if (TryComp<MobStateComponent>(source, out var mobState) && mobState.CurrentState == MobState.SoftCritical)
+            return;
+        // funky end
+
         var message = TransformSpeech(source, originalMessage);
 
         if (message.Length == 0)
@@ -452,6 +467,11 @@ public sealed partial class ChatSystem : SharedChatSystem
     {
         if (!_actionBlocker.CanSpeak(source) && !ignoreActionBlocker)
             return;
+
+        // funky
+        if (channel != null && TryComp<MobStateComponent>(source, out var mobState) && mobState.CurrentState == MobState.SoftCritical)
+            channel = null;
+        // funky end
 
         var message = TransformSpeech(source, FormattedMessage.RemoveMarkupOrThrow(originalMessage));
         if (message.Length == 0)
