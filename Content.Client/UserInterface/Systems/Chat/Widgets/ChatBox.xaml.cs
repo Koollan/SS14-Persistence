@@ -1,5 +1,5 @@
 using Content.Client.UserInterface.Systems.Chat.Controls;
-using Content.Client._RMC14.Chat;
+using Content.Client._RMC14.Chat; // Persistence: Chat stacking from RMC14 - pull/7587
 using Content.Shared.Chat;
 using Content.Shared.Input;
 using Robust.Client.Audio;
@@ -25,7 +25,7 @@ public partial class ChatBox : UIWidget
     private readonly ISawmill _sawmill;
     private readonly ChatUIController _controller;
 
-    public readonly Queue<RepeatedMessage> RepeatQueue = new();
+    public readonly Queue<RepeatedMessage> RepeatQueue = new(); // Persistence: Chat stacking from RMC14 - pull/7587
 
     public bool Main { get; set; }
 
