@@ -70,7 +70,7 @@ public partial class ChatBox : UIWidget
 
         var color = msg.MessageColorOverride ?? msg.Channel.TextColor();
 
-        AddLine(msg.WrappedMessage, color);
+        AddLine(msg.WrappedMessage, color, msg.SenderEntity, msg.Message, msg.Channel, msg.RepeatCheckSender);
     }
 
     private void OnHighlightsUpdated(string highlights)
@@ -119,6 +119,19 @@ public partial class ChatBox : UIWidget
         formatted.PushColor(color);
         formatted.AddMarkupOrThrow(message);
         formatted.Pop();
+        Contents.AddMessage(formatted, tagsAllowed: null);
+    }
+
+    public void AddLine(string message, Color color, NetEntity sender, string unwrapped, ChatChannel channel, bool repeatCheckSender)
+    {
+        var formatted = new FormattedMessage(3);
+        formatted.PushColor(color);
+        formatted.AddMarkupOrThrow(message);
+        formatted.Pop();
+
+        if (_entManager.System<CMChatSystem>().TryRepetition(this, Contents, formatted, sender, unwrapped, channel, repeatCheckSender))
+            return;
+
         Contents.AddMessage(formatted, tagsAllowed: null);
     }
 
