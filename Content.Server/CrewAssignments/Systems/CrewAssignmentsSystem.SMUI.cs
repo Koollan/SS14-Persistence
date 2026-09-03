@@ -36,6 +36,7 @@ public sealed partial class CrewAssignmentSystem
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationDisableChannel>(OnDisableChannel);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationCreateChannel>(OnCreateChannel);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationEditChannel>(OnEditChannel);
+        SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationDeleteChannel>(OnDeleteChannel);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationToggleClaim>(OnToggleClaim);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationToggleGenRec>(OnToggleGenRec);
         SubscribeLocalEvent<StationModificationConsoleComponent, StationModificationToggleAssign>(OnToggleAssign);
@@ -703,6 +704,59 @@ public sealed partial class CrewAssignmentSystem
         existing.Hotkey = hotkey;
         existing.CustomColor = ClampBrightCustomColor(args.Red, args.Green, args.Blue);
         existing.Enabled = true;
+
+        Dirty(station.Value, stationData);
+        UpdateOrders(station.Value);
+    }
+
+    private void OnDeleteChannel(EntityUid uid, StationModificationConsoleComponent component, StationModificationDeleteChannel args)
+    {
+        if (args.Actor is not { Valid: true } player)
+            return;
+
+        var station = _station.GetOwningStation(uid);
+        if (station == null)
+            return;
+
+        if (!Validate(uid, component, player, out _))
+            return;
+
+        if (!TryComp<StationDataComponent>(station, out var stationData))
+        {
+            ConsolePopup(player, "No Station Data Component!");
+            return;
+        }
+
+        if (args.ChannelID == "Common")
+        {
+            ConsolePopup(player, "Common channel cannot be customized.");
+            return;
+        }
+
+        if (!stationData.RadioData.TryGetValue(args.ChannelID, out var existing))
+        {
+            ConsolePopup(player, "Invalid Channel!");
+            return;
+        }
+
+        if (!existing.IsCustom)
+        {
+            ConsolePopup(player, "Only customized channels can be deleted.");
+            return;
+        }
+
+        if (CustomChannelPool.Contains(args.ChannelID))
+        {
+            stationData.RadioData.Remove(args.ChannelID);
+        }
+        else
+        {
+            existing.IsCustom = false;
+            existing.CustomName = null;
+            existing.CustomColor = null;
+            existing.Hotkey = '\0';
+            existing.Access.Clear();
+        }
 
         Dirty(station.Value, stationData);
         UpdateOrders(station.Value);

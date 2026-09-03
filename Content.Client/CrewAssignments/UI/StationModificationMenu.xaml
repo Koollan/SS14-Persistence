@@ -287,6 +287,8 @@
                         <LineEdit Name="EditChannelHotkey" Access="Public" PlaceHolder="Key" MinWidth="46"/>
                         <Control MinWidth="6"/>
                         <Button Name="EditChannelButton" Access="Public" Text="Save"/>
+                        <Control MinWidth="6"/>
+                        <Button Name="DeleteChannelButton" Access="Public" Text="Delete"/>
                     </BoxContainer>
                     <Control MinHeight="8"/>
                     <BoxContainer Orientation="Horizontal">

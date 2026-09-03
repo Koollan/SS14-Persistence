@@ -36,6 +36,7 @@ namespace Content.Client.CrewAssignments.UI
         private int? _lastChannelSelected;
         private readonly List<ProtoId<RadioChannelPrototype>> _channelOrder = new();
         private bool _suppressColorCallbacks;
+        private bool _deleteChannelConfirmArmed;
         public string? LastAssignmentCreated;
         Dictionary<string, CrewAccess>? _accesses;
         Dictionary<int, CrewAssignment>? _assignments;
@@ -128,8 +129,28 @@ namespace Content.Client.CrewAssignments.UI
         {
             _lastChannelSelected = args.Id;
             PossibleChannels.SelectId(args.Id);
+            ResetDeleteChannelConfirmation();
             UpdateChannel();
 
+        }
+
+        public bool RequireDeleteChannelConfirmation()
+        {
+            if (_deleteChannelConfirmArmed)
+            {
+                ResetDeleteChannelConfirmation();
+                return false;
+            }
+
+            _deleteChannelConfirmArmed = true;
+            DeleteChannelButton.Text = "Are you sure?";
+            return true;
+        }
+
+        public void ResetDeleteChannelConfirmation()
+        {
+            _deleteChannelConfirmArmed = false;
+            DeleteChannelButton.Text = "Delete";
         }
         private void OnDelAccessSelected(OptionButton.ItemSelectedEventArgs args)
         {
@@ -169,6 +190,9 @@ namespace Content.Client.CrewAssignments.UI
             _channelOrder.Clear();
             foreach (var owner in radioData)
             {
+                if (owner.Key == "Common")
+                    continue;
+
                 _protoManager.Resolve(owner.Key, out var radioProto);
                 if (radioProto == null) continue;
 
@@ -219,6 +243,7 @@ namespace Content.Client.CrewAssignments.UI
             var selectedId = SelectedChannelId;
             if (selectedId == null || !RadioData.TryGetValue(selectedId.Value, out var data))
             {
+                ResetDeleteChannelConfirmation();
                 ChannelEnable.Pressed = false;
                 ChannelDisable.Pressed = false;
                 ChannelEnable.Disabled = true;
@@ -226,6 +251,7 @@ namespace Content.Client.CrewAssignments.UI
                 EditChannelName.Text = string.Empty;
                 EditChannelHotkey.Text = string.Empty;
                 EditChannelButton.Disabled = true;
+                DeleteChannelButton.Disabled = true;
                 EditChannelHint.Text = "No channels available to edit.";
 
                 foreach (Button button in ChannelAccessesBC.Children)
@@ -256,7 +282,11 @@ namespace Content.Client.CrewAssignments.UI
                 : data.GetColor();
             ChannelColorPicker.Color = ClampCustomChannelColor(sourceColor);
             var isCommonChannel = selectedId.Value == "Common";
+            var canDeleteChannel = data.IsCustom && !isCommonChannel;
             EditChannelButton.Disabled = isCommonChannel;
+            DeleteChannelButton.Disabled = !canDeleteChannel;
+            if (!canDeleteChannel)
+                ResetDeleteChannelConfirmation();
             EditChannelHint.Text = isCommonChannel
                 ? "Common channel cannot be customized."
                 : string.Empty;

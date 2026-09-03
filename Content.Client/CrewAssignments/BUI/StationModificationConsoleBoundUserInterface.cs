@@ -85,6 +85,7 @@ public sealed class StationModificationConsoleBoundUserInterface : BoundUserInte
         _menu.ChannelDisable.OnPressed += OnChannelDisable;
         _menu.CreateChannelButton.OnPressed += OnCreateChannel;
         _menu.EditChannelButton.OnPressed += OnEditChannel;
+        _menu.DeleteChannelButton.OnPressed += OnDeleteChannel;
         _menu.JobNetOn.OnPressed += OnJobNetOn;
         _menu.JobNetOff.OnPressed += OnJobNetOff;
         _menu.OpenCentered();
@@ -273,6 +274,21 @@ public sealed class StationModificationConsoleBoundUserInterface : BoundUserInte
 
         SendMessage(new StationModificationEditChannel(channelId.Value, name, hotkey, color.RByte, color.GByte, color.BByte));
         // End Persistence 14
+    }
+
+    private void OnDeleteChannel(ButtonEventArgs args)
+    {
+        if (_menu == null || _menu.RadioData == null)
+            return;
+
+        var channelId = _menu.SelectedChannelId;
+        if (channelId == null)
+            return;
+
+        if (_menu.RequireDeleteChannelConfirmation())
+            return;
+
+        SendMessage(new StationModificationDeleteChannel(channelId.Value));
     }
     private void ToggleAssignmentAccess(ButtonToggledEventArgs args)
     {
