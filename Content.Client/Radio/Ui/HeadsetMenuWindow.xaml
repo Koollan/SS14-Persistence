@@ -2,6 +2,9 @@
             MinSize="400 260" Access="Public">
     <BoxContainer Orientation="Vertical">
         <BoxContainer Orientation="Vertical" Margin="0 0 0 8">
+            <CheckBox Name="ShowTags" Text="Show Faction Tags in Chat" Access="Public" />
+        </BoxContainer>
+        <BoxContainer Orientation="Vertical" Margin="0 0 0 8">
             <Label Text="Transmitting To" StyleClasses="LabelKeyText" />
             <CheckBox Name="AllOutputs" Text="All factions" Access="Public" />
             <BoxContainer Name="PossibleOutputs" Orientation="Vertical" Access="Public" Margin="14 0 0 0" />

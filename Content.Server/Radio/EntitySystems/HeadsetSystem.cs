@@ -35,6 +35,7 @@ public sealed class HeadsetSystem : SharedHeadsetSystem
             subs.Event<BoundUIOpenedEvent>(UpdateUserInterface);
             subs.Event<HeadsetMenuInputToggle>(OnToggleInput);
             subs.Event<HeadsetMenuOutputToggle>(OnToggleOutput);
+            subs.Event<HeadsetMenuTagsToggle>(OnToggleTags);
         });
     }
 
@@ -44,7 +45,7 @@ public sealed class HeadsetSystem : SharedHeadsetSystem
         component.TransmitTo.RemoveWhere(id => !formattedStations.ContainsKey(id));
         component.RecieveFrom.RemoveWhere(id => !formattedStations.ContainsKey(id));
 
-        var newState = new HeadsetMenuBoundUserInterfaceState(formattedStations, new HashSet<int>(component.TransmitTo), new HashSet<int>(component.RecieveFrom));
+        var newState = new HeadsetMenuBoundUserInterfaceState(formattedStations, new HashSet<int>(component.TransmitTo), new HashSet<int>(component.RecieveFrom), component.ShowTags);
         _userInterface.SetUiState(uid, HeadsetMenuUiKey.Key, newState);
 
     }
@@ -120,6 +121,18 @@ public sealed class HeadsetSystem : SharedHeadsetSystem
         {
             component.TransmitTo.Remove(args.Target);
         }
+
+        Dirty(uid, component);
+        var player = args.Actor;
+        UpdateUserInterface(uid, component, player);
+    }
+
+    private void OnToggleTags(EntityUid uid, HeadsetComponent component, HeadsetMenuTagsToggle args)
+    {
+        if (!component.Initialized)
+            return;
+
+        component.ShowTags = args.Enabled;
 
         Dirty(uid, component);
         var player = args.Actor;
