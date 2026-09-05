@@ -120,15 +120,23 @@ public sealed class RadioSystem : EntitySystem
 
         var displayColor = channel.Color;
         var displayName = channel.LocalizedName;
+        var factionTag = "";
+        var factionTagSeparator = " - ";
+
+        TryComp<HeadsetComponent>(radioSource, out var sourceHeadset);
 
         if (encryptionID > 0)
         {
-            ResolveCustomChannelPresentation(encryptionID, channel, ref displayColor, ref displayName);
+            ResolveCustomChannelPresentation(encryptionID, channel, ref displayColor, ref displayName, ref factionTag);
         }
-        else if (TryComp<HeadsetComponent>(radioSource, out var sourceHeadset) && sourceHeadset.TransmitTo.Count > 0)
+        else if (sourceHeadset is not null && sourceHeadset.TransmitTo.Count > 0)
         {
-            ResolveCustomChannelPresentation(sourceHeadset.TransmitTo.First(), channel, ref displayColor, ref displayName);
+            ResolveCustomChannelPresentation(sourceHeadset.TransmitTo.First(), channel, ref displayColor, ref displayName, ref factionTag);
         }
+
+        if (sourceHeadset is not null && sourceHeadset.ShowTags && !string.IsNullOrWhiteSpace(factionTag))
+            displayName = factionTag + factionTagSeparator + displayName;
+
 
         var wrappedMessage = Loc.GetString(speech.Bold ? "chat-radio-message-wrap-bold" : "chat-radio-message-wrap",
             ("color", displayColor),
@@ -290,7 +298,7 @@ public sealed class RadioSystem : EntitySystem
         return false;
     }
 
-    private void ResolveCustomChannelPresentation(int stationId, RadioChannelPrototype channel, ref Color color, ref string name)
+    private void ResolveCustomChannelPresentation(int stationId, RadioChannelPrototype channel, ref Color color, ref string name, ref string factionTag)
     {
         var station = _station.GetStationByID(stationId);
         if (station == null || !TryComp<StationDataComponent>(station, out var stationData))
@@ -298,6 +306,9 @@ public sealed class RadioSystem : EntitySystem
 
         if (!stationData.RadioData.TryGetValue(channel.ID, out var radioData))
             return;
+
+        if (!string.IsNullOrWhiteSpace(stationData.FactionTag))
+            factionTag = stationData.FactionTag;
 
         if (!string.IsNullOrWhiteSpace(radioData.CustomColor))
             color = radioData.GetColor();

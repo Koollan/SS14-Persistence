@@ -23,6 +23,7 @@ public sealed partial class HeadsetMenuWindow : DefaultWindow
         RobustXamlLoader.Load(this);
         AllInputs.OnToggled += OnAllInputsToggled;
         AllOutputs.OnToggled += OnAllOutputsToggled;
+        ShowTags.OnToggled += OnShowTagsToggled;
     }
 
     private void OnAllInputsToggled(BaseButton.ButtonToggledEventArgs args)
@@ -41,6 +42,13 @@ public sealed partial class HeadsetMenuWindow : DefaultWindow
         BUI.SendMessage(new HeadsetMenuOutputToggle(0, args.Pressed));
     }
 
+    private void OnShowTagsToggled(BaseButton.ButtonToggledEventArgs args)
+    {
+        if (_updating || BUI == null)
+            return;
+        BUI.SendMessage(new HeadsetMenuTagsToggle(args.Pressed));
+    }
+
     public void UpdateState(IPrototypeManager protoManager, HeadsetMenuBoundUserInterfaceState state)
     {
         _updating = true;
@@ -51,6 +59,8 @@ public sealed partial class HeadsetMenuWindow : DefaultWindow
         var transmitAll = state.TransmitTo.Count == 0;
         AllInputs.Pressed = receiveAll;
         AllOutputs.Pressed = transmitAll;
+
+        ShowTags.Pressed = state.ShowTags;
 
         foreach (var kv in state.FormattedStations)
         {
