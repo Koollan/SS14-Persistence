@@ -1,8 +1,10 @@
 using Content.Client.Cargo.Systems;
 using Content.Client.Cargo.UI;
+using Content.Client.CrewAssignments.BUI;
 using Content.Client.Message;
 using Content.Client.UserInterface.Controls;
 using Content.Shared.Cargo;
+using Content.Shared.Cargo.BUI;
 using Content.Shared.Cargo.Components;
 using Content.Shared.Cargo.Prototypes;
 using Content.Shared.CrewAccesses.Components;
@@ -30,7 +32,7 @@ namespace Content.Client.CrewAssignments.UI
         private readonly IPrototypeManager _protoManager;
         private readonly CargoSystem _cargoSystem;
         private readonly SpriteSystem _spriteSystem;
-        private EntityUid _owner;
+        private StationModificationConsoleBoundUserInterface _owner;
         private EntityUid? _station;
         private int? _lastAssignmentSelected;
         private int? _lastChannelSelected;
@@ -47,7 +49,7 @@ namespace Content.Client.CrewAssignments.UI
         public event Action<ButtonToggledEventArgs>? OnAssignmentAccessPressed;
         public event Action<ButtonToggledEventArgs>? OnChannelAccessPressed;
 
-        public StationModificationMenu(EntityUid owner, IEntityManager entMan, IPrototypeManager protoManager, SpriteSystem spriteSystem)
+        public StationModificationMenu(StationModificationConsoleBoundUserInterface owner, IEntityManager entMan, IPrototypeManager protoManager, SpriteSystem spriteSystem)
         {
             RobustXamlLoader.Load(this);
             IoCManager.InjectDependencies(this);
@@ -56,11 +58,12 @@ namespace Content.Client.CrewAssignments.UI
             _spriteSystem = spriteSystem;
             _owner = owner;
 
-            Title = entMan.GetComponent<MetaDataComponent>(owner).EntityName;
+            Title = "Faction Modification";
             TabContainer.SetTabTitle(0, "General");
             TabContainer.SetTabTitle(1, "Assignments");
             TabContainer.SetTabTitle(2, "Radio");
             TabContainer.SetTabTitle(3, "Upgrade");
+            TabContainer.SetTabTitle(4, "Resonance Market");
             PossibleAccesses.OnItemSelected += OnDelAccessSelected;
             PossibleAssignments.OnItemSelected += OnAssignmentSelected;
             PossibleChannels.OnItemSelected += OnChannelSelected;
@@ -350,7 +353,7 @@ namespace Content.Client.CrewAssignments.UI
 
         }
 
-        public void UpdateUpgrades(ProtoId<FactionLevelPrototype> level, int balance)
+        public void UpdateUpgrades(ProtoId<FactionLevelPrototype> level, Dictionary<ProtoId<Shared._Persistence14.Upgrades.Prototypes.UpgradeModuleTypePrototype>, int> upgradeProgress, StationModificationConsoleBoundUserInterface stationModificationConsoleBoundUserInterface)
         {
             _protoManager.Resolve(level, out var levelProto);
             if (levelProto == null) return;
@@ -365,11 +368,11 @@ namespace Content.Client.CrewAssignments.UI
                 levelDesc += $"\n[color=green]Can claim trade stations[/color]";
             CurrentBenefitsLabel.SetMarkup(levelDesc);
             string nextLevelDesc;
+            UpgradeRequirementsBox.RemoveAllChildren();
             if (nextLevelProto == null)
             {
                 NextFactionLevelLabel.Text = "Max Level Attained";
                 nextLevelDesc = "[color=green]Maximum Level Attained[/color]";
-                LevelPurchaseButton.Visible = false;
             }
             else
             {
@@ -379,11 +382,16 @@ namespace Content.Client.CrewAssignments.UI
                 {
                     nextLevelDesc += $"\n[color=green]Can claim trade stations[/color]";
                 }
-                LevelPurchaseButton.Visible = true;
-                LevelPurchaseButton.Text = $"${nextLevelProto.Cost}";
+                foreach (var kv in nextLevelProto.RequiredModules)
+                {
+                    int progress = 0;
+                    if (upgradeProgress.ContainsKey(kv.Key)) progress = upgradeProgress[kv.Key];
+                    FactionUpgradeModuleFragment fragment = new(kv, progress);
+                    fragment.ApplyButton.OnPressed += _ => stationModificationConsoleBoundUserInterface.OnModuleApply(kv.Key);
+                    UpgradeRequirementsBox.AddChild(fragment);
+                }
             }
             NextBenefitsLabel.SetMarkup(nextLevelDesc);
-            AccountBalanceLabel.Text = $"${balance}";
 
         }
 
@@ -461,6 +469,26 @@ namespace Content.Client.CrewAssignments.UI
                 {
                     button.Pressed = false;
                 }
+            }
+        }
+
+        public void UpdateResonance(StationModificationInterfaceState cState)
+        {
+            MarketInnerBox.RemoveAllChildren();
+            foreach (var product in cState.ResonanceMarket)
+            {
+                ResonanceProductBox box = new(product, cState.Resonance, cState.PartialPurchases, _owner, cState.TradeStationClaimed);
+                MarketInnerBox.AddChild(box);
+            }
+            ResonanceBalance.Text = $"$${cState.Resonance}";
+
+            if (cState.TradeStationClaimed)
+            {
+                MarketClosedBox.Visible = false;
+            }
+            else
+            {
+                MarketClosedBox.Visible = true;
             }
         }
     }

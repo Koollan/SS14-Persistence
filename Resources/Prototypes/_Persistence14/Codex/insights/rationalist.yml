@@ -1,0 +1,78 @@
+- type: insightTrait
+  id: AnomalySense
+  name: insight-ration-1-name
+  content: insight-ration-1-desc
+  next: ArtifactReroll
+  trait: AnomalySense
+
+- type: trait
+  id: AnomalySense
+  name: insight-ration-1-name
+  description: insight-ration-1-desc
+  selectable: false
+  components:
+    - type: ActionGrant
+      actions:
+        - ActionAnomalySense
+      autoDelete: true
+
+- type: entity
+  parent: BaseAction
+  id: ActionAnomalySense
+  name: Sense Anomaly
+  description: Sense the location of the nearest anomaly.
+  components:
+  - type: Action
+    useDelay: 30
+  - type: Sprite
+    sprite: Clothing/Neck/Misc/pins.rsi
+    layers:
+    - state: flower
+  - type: InstantAction
+    event: !type:SenseAnomalyEvent
+
+- type: insightTrait
+  id: ArtifactReroll
+  name: insight-ration-2-name
+  content: insight-ration-2-desc
+  trait: ArtifactReroll
+  next: Rationalist3
+
+- type: trait
+  id: ArtifactReroll
+  name: insight-ration-2-name
+  description: insight-ration-3-name
+  selectable: false
+  components:
+    - type: ActionGrant
+      actions:
+        - ActionArtifactReroll
+      autoDelete: true
+
+- type: entity
+  parent: BaseAction
+  id: ActionArtifactReroll
+  name: Beggar's choice
+  description: Reroll a node on an artifact (WIP).
+  components:
+  - type: Action
+    useDelay: 30
+  - type: Sprite
+    sprite: Clothing/Neck/Misc/pins.rsi
+    layers:
+    - state: flower
+  - type: InstantAction
+    event: !type:ArtifactRerollEvent
+
+- type: insightTrait
+  id: Rationalist3
+  name: insight-ration-3-name
+  content: insight-ration-3-desc
+  next: Rationalist4
+  trait: AnomalySense
+
+- type: insightTrait
+  id: Rationalist4
+  name: insight-ration-4-name
+  content: insight-ration-4-desc
+  trait: AnomalySense
