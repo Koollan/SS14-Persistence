@@ -202,7 +202,7 @@ public abstract partial class SharedChatSystem : EntitySystem
         // Persistence 14: Resolve faction-scoped custom radio hotkeys before falling back to global prototype keycodes so each headset can target its configured faction channels.
         var customEv = new ResolveCustomRadioChannelEvent(channelKey);
         RaiseLocalEvent(source, customEv);
-        if (customEv.Channel != null && _prototypeManager.TryIndex(customEv.Channel, out channel))
+        if (customEv.Channel != null && ProtoMan.TryIndex(customEv.Channel, out channel))
         {
             encryptionID = customEv.EncryptionID;
             return true;

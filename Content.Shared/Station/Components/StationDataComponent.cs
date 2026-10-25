@@ -2,7 +2,9 @@ using Content.Shared._Persistence14.Upgrades.Prototypes;
 using Content.Shared.CrewAssignments.Prototypes;
 using Content.Shared.Radio;
 using Content.Shared.Roles;
+using Robust.Shared.GameObjects;
 using Robust.Shared.GameStates;
+using Robust.Shared.IoC;
 using Robust.Shared.Prototypes;
 using System.Text;
 
@@ -165,13 +167,13 @@ public sealed partial class StationDataComponent : Component
     public void RemoveOwner(string owner)
     {
         if (!Owners.Remove(owner)) return;
-        Dirty();
+        IoCManager.Resolve<IEntityManager>().Dirty(Owner, this);
     }
     public void AddOwner(string owner)
     {
         if (Owners.Contains(owner)) return;
         Owners.Add(owner);
-        Dirty();
+        IoCManager.Resolve<IEntityManager>().Dirty(Owner, this);
     }
 }
 
@@ -210,7 +212,7 @@ public partial class FactionRadioData
         if (string.IsNullOrWhiteSpace(CustomColor))
             return Color.Lime;
 
-        return Color.TryFromHex(CustomColor) ?? Color.Lime;
+        return Color.TryFromHex(CustomColor, out var color) ? color : Color.Lime;
     }
     // End Persistence 14
 }
