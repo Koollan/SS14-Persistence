@@ -94,7 +94,7 @@ public sealed class RadioSystem : EntitySystem
     /// </summary>
     /// <param name="messageSource">Entity that spoke the message</param>
     /// <param name="radioSource">Entity that picked up the message and will send it, e.g. headset</param>
-    public void SendRadioMessage(EntityUid messageSource, string message, RadioChannelPrototype channel, EntityUid radioSource, bool escapeMarkup = true, bool useNetworkOverride = true, int encryptionID = 0f, loat transmitterRange = float.PositiveInfinity)
+    public void SendRadioMessage(EntityUid messageSource, string message, RadioChannelPrototype channel, EntityUid radioSource, bool escapeMarkup = true, bool useNetworkOverride = true, int encryptionID = 0, float transmitterRange = float.PositiveInfinity)
     {
         // TODO if radios ever garble / modify messages, feedback-prevention needs to be handled better than this.
         if (!_messages.Add(message))
@@ -210,26 +210,28 @@ public sealed class RadioSystem : EntitySystem
 
             else if (TryComp<HeadsetComponent>(receiver, out var targetHeadset) && targetHeadset != null)
             {
-                if (targetHeadset.RecieveFrom.Count > 0 && !targetHeadset.RecieveFrom.Contains(encryptionID))
-                {
-                    continue;
-                }
                 var station = _station.GetStationByID(encryptionID);
                 if (station == null) continue;
                 var parent = Transform(receiver).ParentUid;
 
-                if (parent.IsValid())
-                {
-                    if (!_headset.HasChannelAccess(parent, station.Value, channel))
-                    {
-                        continue;
-                    }
-                }
-                else
+                if (!parent.IsValid())
+                    continue;
+
+                // Persistence 14: Access to a channel is the authoritative gate - a listener with access
+                // must always be able to hear it, even when several factions share one channel hotkey and
+                // the message fans out into one copy per faction.
+                if (!_headset.HasChannelAccess(parent, station.Value, channel))
                 {
                     continue;
                 }
 
+                // Persistence 14: An explicit per-faction mute still wins over access. RecieveFrom defaults
+                // to every faction the listener can access, so an accessible faction missing from the set
+                // means it was explicitly toggled off - a genuine mute. (Access was already confirmed above.)
+                if (targetHeadset.RecieveFrom.Count > 0 && !targetHeadset.RecieveFrom.Contains(encryptionID))
+                {
+                    continue;
+                }
             }
             else if (!radio.ReceiveAllChannels)
             {
@@ -307,8 +309,10 @@ public sealed class RadioSystem : EntitySystem
         if (!stationData.RadioData.TryGetValue(channel.ID, out var radioData))
             return;
 
-        if (!string.IsNullOrWhiteSpace(stationData.FactionTag))
-            factionTag = stationData.FactionTag;
+        // Persistence 14: Always resolve a faction tag (configured or auto-generated from the faction name)
+        // so copies of the same channel hotkey fanned out across factions render with distinct labels and
+        // don't collapse into one stacked chat line.
+        factionTag = stationData.GetResolvedFactionTag(stationData.StationName ?? string.Empty);
 
         if (!string.IsNullOrWhiteSpace(radioData.CustomColor))
             color = radioData.GetColor();

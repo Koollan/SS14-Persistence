@@ -183,6 +183,19 @@ namespace Content.Client.CrewAssignments.UI
             }
         }
 
+        // Persistence 14: Channels that are not faction-editable and must be hidden from the Selected
+        // Channels list in the Faction Modification UI. They still exist in RadioData for other systems.
+        private static readonly HashSet<ProtoId<RadioChannelPrototype>> HiddenFactionChannels = new()
+        {
+            "CentCom",
+            "Syndicate",
+            "Handheld",
+            "Binary",
+            "Freelance",
+            "Xenoborg",
+            "Mothership",
+        };
+
         public void UpdateChannels(Dictionary<ProtoId<RadioChannelPrototype>, FactionRadioData> radioData)
         {
             RadioData = radioData;
@@ -191,6 +204,9 @@ namespace Content.Client.CrewAssignments.UI
             foreach (var owner in radioData)
             {
                 if (owner.Key == "Common")
+                    continue;
+
+                if (HiddenFactionChannels.Contains(owner.Key))
                     continue;
 
                 _protoManager.Resolve(owner.Key, out var radioProto);

@@ -1,4 +1,5 @@
 using Content.Server.Station.Systems;
+using Content.Shared.Access.Systems;
 using Content.Shared.Chat;
 using Content.Shared.CrewAssignments.Components;
 using Content.Shared.CrewRecords.Components;
@@ -22,6 +23,7 @@ public sealed partial class HeadsetSystem : SharedHeadsetSystem
     [Dependency] private AccessReaderSystem _accessReader = default!;
     [Dependency] private StationSystem _station = default!;
     [Dependency] private UserInterfaceSystem _userInterface = default!;
+    [Dependency] private SharedMindSystem _mind = default!;
 
     public override void Initialize()
     {
@@ -148,11 +150,8 @@ public sealed partial class HeadsetSystem : SharedHeadsetSystem
 
         var recordKey = mind.CharacterName;
 
-        foreach (var station in _station.GetStations())
+        foreach (var station in _station.GetStationsAvailableTo(recordKey))
         {
-            if (!TryComp<CrewRecordsComponent>(station, out var crewRecords) || !crewRecords.TryGetRecord(recordKey, out _))
-                continue;
-
             if (!TryComp<StationDataComponent>(station, out var data) || data.StationName == null)
                 continue;
 
