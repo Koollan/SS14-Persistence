@@ -30,6 +30,7 @@ public sealed partial class HeadsetSystem : SharedHeadsetSystem
         base.Initialize();
         SubscribeLocalEvent<HeadsetComponent, RadioReceiveEvent>(OnHeadsetReceive);
         SubscribeLocalEvent<HeadsetComponent, EncryptionChannelsChangedEvent>(OnKeysChanged);
+        SubscribeLocalEvent<HeadsetComponent, ComponentStartup>(OnHeadsetStartup);
 
         SubscribeLocalEvent<WearingHeadsetComponent, EntitySpokeEvent>(OnSpeak);
         Subs.BuiEvents<HeadsetComponent>(HeadsetMenuUiKey.Key, subs =>
@@ -39,6 +40,29 @@ public sealed partial class HeadsetSystem : SharedHeadsetSystem
             subs.Event<HeadsetMenuOutputToggle>(OnToggleOutput);
             subs.Event<HeadsetMenuTagsToggle>(OnToggleTags);
         });
+    }
+
+    /// <summary>
+    /// Migrates legacy single-station fields from pre-multi-faction saves into the station sets.
+    /// Old saves store transmitTo/recieveFrom as a scalar int (0 = all factions); the fields are
+    /// now HashSet<int> under new YAML keys, so without this the entities would fail to load and
+    /// be deleted by the map loader.
+    /// </summary>
+    private void OnHeadsetStartup(EntityUid uid, HeadsetComponent component, ComponentStartup args)
+    {
+        if (component.LegacyTransmitTo != 0)
+        {
+            component.TransmitTo.Add(component.LegacyTransmitTo);
+            component.LegacyTransmitTo = 0;
+            Dirty(uid, component);
+        }
+
+        if (component.LegacyRecieveFrom != 0)
+        {
+            component.RecieveFrom.Add(component.LegacyRecieveFrom);
+            component.LegacyRecieveFrom = 0;
+            Dirty(uid, component);
+        }
     }
 
     private void UpdateUserInterface(EntityUid uid, HeadsetComponent component, EntityUid player)

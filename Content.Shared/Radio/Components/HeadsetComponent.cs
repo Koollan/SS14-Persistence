@@ -20,11 +20,22 @@ public sealed partial class HeadsetComponent : Component
     [DataField, AutoNetworkedField]
     public SlotFlags RequiredSlot = SlotFlags.EARS;
 
-    [DataField, AutoNetworkedField]
+    // Persistence 14: multi-faction selection. Uses new YAML keys (transmitToStations/recieveFromStations)
+    // because the old scalar keys (transmitTo/recieveFrom) are kept below for save compatibility.
+    [DataField("transmitToStations"), AutoNetworkedField]
     public HashSet<int> TransmitTo = new();
 
-    [DataField, AutoNetworkedField]
+    [DataField("recieveFromStations"), AutoNetworkedField]
     public HashSet<int> RecieveFrom = new();
+
+    // Legacy single-station fields from before multi-faction headsets (0 = all factions).
+    // These only exist so pre-multi-faction saves still deserialize; HeadsetSystem migrates
+    // them into the sets above on ComponentStartup. Not networked.
+    [DataField("transmitTo")]
+    public int LegacyTransmitTo = 0;
+
+    [DataField("recieveFrom")]
+    public int LegacyRecieveFrom = 0;
 
     [DataField, AutoNetworkedField]
     public bool ShowTags = true;
