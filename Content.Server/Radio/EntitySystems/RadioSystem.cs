@@ -215,7 +215,8 @@ public sealed partial class RadioSystem : SharedRadioSystem
             hasActiveServer = true; // Changed from HasActiveServer(mapId, channelId)
 
         var radioQuery = EntityQueryEnumerator<ActiveRadioComponent, TransformComponent>();
-        if (encryptionID <= 0 && TryComp<HeadsetComponent>(radioSource, out var headset) && headset != null && headset.TransmitTo.Count > 0)
+        // Unencrypted channels (e.g. Common / the Death Network SOS) are global and must not be narrowed to a faction.
+        if (channel.Encrypted && encryptionID <= 0 && TryComp<HeadsetComponent>(radioSource, out var headset) && headset != null && headset.TransmitTo.Count > 0)
         {
             encryptionID = headset.TransmitTo.First();
         }
