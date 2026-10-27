@@ -152,7 +152,12 @@ public sealed partial class RadioSystem : SharedRadioSystem
             ResolveCustomChannelPresentation(sourceHeadset.TransmitTo.First(), channel, ref displayColor, ref displayName, ref factionTag);
         }
 
-        if (sourceHeadset is not null && sourceHeadset.ShowTags && !string.IsNullOrWhiteSpace(factionTag))
+        var commonId = "Common";
+
+        if (sourceHeadset is not null &&
+            sourceHeadset.ShowTags &&
+            !string.IsNullOrWhiteSpace(factionTag) &&
+            channel != ProtoMan.Index<RadioChannelPrototype>(commonId))
             displayName = factionTag + factionTagSeparator + displayName;
 
 
