@@ -7,10 +7,10 @@
     Use a handlabeler for better organization
   components:
   - type: Sprite
-    sprite: _Persistence14/Structures/storage/storage-counter.rsi
+    sprite: _Persistence14/Structures/Storage/storage-counter.rsi
     state: white
   - type: Icon
-    sprite: _Persistence14/Structures/storage/storage-counter.rsi
+    sprite: _Persistence14/Structures/Storage/storage-counter.rsi
     state: white
   - type: PlaceableSurface
   - type: Storage
@@ -46,12 +46,12 @@
   description: An unfinished storage counter
   components:
   - type: Sprite
-    sprite: _Persistence14/Structures/storage/storage-counter.rsi
+    sprite: _Persistence14/Structures/Storage/storage-counter.rsi
     layers:
     - state: frame-step0
       map: ["enum.ConstructionVisuals.Layer"]
   - type: Icon
-    sprite: _Persistence14/Structures/storage/storage-counter.rsi
+    sprite: _Persistence14/Structures/Storage/storage-counter.rsi
     state: frame-step0
   - type: Appearance
   - type: GenericVisualizer

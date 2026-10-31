@@ -5,10 +5,10 @@
   description: Very expensive, but security never comes cheap.
   components:
   - type: Icon
-    sprite: _Persistence14/Structures/storage/TitaniumStorage/titanium-closet.rsi
+    sprite: _Persistence14/Structures/Storage/TitaniumStorage/titanium-closet.rsi
     state: icon
   - type: Sprite
-    sprite: _Persistence14/Structures/storage/TitaniumStorage/titanium-closet.rsi
+    sprite: _Persistence14/Structures/Storage/TitaniumStorage/titanium-closet.rsi
     layers:
     - state: base
       map: ["enum.StorageVisualLayers.Base"]
@@ -65,10 +65,10 @@
   description: Very expensive, but security never comes cheap.
   components:
   - type: Sprite
-    sprite: _Persistence14/Structures/storage/TitaniumStorage/titanium-crate.rsi
+    sprite: _Persistence14/Structures/Storage/TitaniumStorage/titanium-crate.rsi
     state: icon
   - type: Icon
-    sprite: _Persistence14/Structures/storage/TitaniumStorage/titanium-crate.rsi
+    sprite: _Persistence14/Structures/Storage/TitaniumStorage/titanium-crate.rsi
     state: icon
   - type: Destructible
     thresholds:
